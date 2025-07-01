@@ -1,0 +1,403 @@
+import React, { useState } from 'react';
+import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter } from 'lucide-react';
+
+const AdminDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('users');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Mock data
+  const stats = {
+    totalUsers: 15420,
+    pendingEvents: 23,
+    refundRequests: 8,
+    monthlyRevenue: 125000
+  };
+
+  const users = [
+    {
+      id: '1',
+      name: 'John Doe',
+      email: 'john@example.com',
+      role: 'User',
+      joinDate: '2024-01-15',
+      status: 'Active',
+      eventsAttended: 12,
+      totalSpent: 450
+    },
+    {
+      id: '2',
+      name: 'Sarah Wilson',
+      email: 'sarah@example.com',
+      role: 'Host',
+      joinDate: '2024-02-20',
+      status: 'Active',
+      eventsHosted: 5,
+      totalRevenue: 12500
+    },
+    {
+      id: '3',
+      name: 'Mike Johnson',
+      email: 'mike@example.com',
+      role: 'User',
+      joinDate: '2024-03-10',
+      status: 'Suspended',
+      eventsAttended: 3,
+      totalSpent: 150
+    }
+  ];
+
+  const pendingEvents = [
+    {
+      id: '1',
+      title: 'Summer Music Festival 2024',
+      organizer: 'EventPro Productions',
+      date: '2024-08-15',
+      category: 'Music',
+      ticketPrice: 89,
+      expectedAttendees: 1000,
+      status: 'Pending Review',
+      submittedDate: '2024-07-01'
+    },
+    {
+      id: '2',
+      title: 'Tech Innovation Summit',
+      organizer: 'TechCorp Events',
+      date: '2024-09-20',
+      category: 'Technology',
+      ticketPrice: 299,
+      expectedAttendees: 500,
+      status: 'Under Review',
+      submittedDate: '2024-07-05'
+    }
+  ];
+
+  const refundRequests = [
+    {
+      id: '1',
+      eventTitle: 'Cancelled Concert',
+      userName: 'Alice Brown',
+      userEmail: 'alice@example.com',
+      amount: 120,
+      reason: 'Event cancelled by organizer',
+      requestDate: '2024-07-10',
+      status: 'Pending'
+    },
+    {
+      id: '2',
+      eventTitle: 'Food Festival',
+      userName: 'Bob Smith',
+      userEmail: 'bob@example.com',
+      amount: 45,
+      reason: 'Unable to attend due to illness',
+      requestDate: '2024-07-12',
+      status: 'Under Review'
+    }
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active':
+      case 'approved':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+      case 'pending review':
+      case 'under review':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'suspended':
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const tabs = [
+    { id: 'users', name: 'Manage Users', icon: Users },
+    { id: 'events', name: 'Verify Events', icon: CheckCircle },
+    { id: 'refunds', name: 'Refund Requests', icon: AlertTriangle }
+  ];
+
+  return (
+    <div className="pt-20 min-h-screen bg-gray-50">
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="w-64 bg-white shadow-soft min-h-screen">
+          <div className="p-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-8">Admin Panel</h1>
+            
+            {/* Stats Overview */}
+            <div className="space-y-4 mb-8">
+              <div className="bg-primary-50 p-4 rounded-xl">
+                <div className="flex items-center">
+                  <Users className="w-8 h-8 text-primary-500" />
+                  <div className="ml-3">
+                    <p className="text-lg font-bold text-gray-900">{stats.totalUsers.toLocaleString()}</p>
+                    <p className="text-sm text-gray-600">Total Users</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-yellow-50 p-4 rounded-xl">
+                <div className="flex items-center">
+                  <CheckCircle className="w-8 h-8 text-yellow-500" />
+                  <div className="ml-3">
+                    <p className="text-lg font-bold text-gray-900">{stats.pendingEvents}</p>
+                    <p className="text-sm text-gray-600">Pending Events</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-red-50 p-4 rounded-xl">
+                <div className="flex items-center">
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                  <div className="ml-3">
+                    <p className="text-lg font-bold text-gray-900">{stats.refundRequests}</p>
+                    <p className="text-sm text-gray-600">Refund Requests</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-xl">
+                <div className="flex items-center">
+                  <DollarSign className="w-8 h-8 text-green-500" />
+                  <div className="ml-3">
+                    <p className="text-lg font-bold text-gray-900">${stats.monthlyRevenue.toLocaleString()}</p>
+                    <p className="text-sm text-gray-600">Monthly Revenue</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="space-y-2">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-300 ${
+                      activeTab === tab.id
+                        ? 'bg-primary-50 text-primary-600'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{tab.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">
+                {tabs.find(tab => tab.id === activeTab)?.name}
+              </h2>
+              <p className="text-gray-600">Manage and monitor platform activities</p>
+            </div>
+            
+            {/* Search and Filter */}
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <button className="p-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-300">
+                <Filter className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content based on active tab */}
+          <div className="bg-white rounded-2xl shadow-soft">
+            {activeTab === 'users' && (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">User</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Role</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Join Date</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Status</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Activity</th>
+                      <th className="text-right py-4 px-6 font-semibold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
+                        <td className="py-4 px-6">
+                          <div>
+                            <p className="font-medium text-gray-900">{user.name}</p>
+                            <p className="text-sm text-gray-600">{user.email}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            user.role === 'Host' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">{user.joinDate}</td>
+                        <td className="py-4 px-6">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
+                            {user.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">
+                          {user.role === 'Host' 
+                            ? `${user.eventsHosted} events hosted`
+                            : `${user.eventsAttended} events attended`
+                          }
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex justify-end space-x-2">
+                            <button className="p-2 text-gray-400 hover:text-primary-500 rounded-lg hover:bg-primary-50 transition-all duration-200">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button className="p-2 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 transition-all duration-200">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all duration-200">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'events' && (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Event</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Organizer</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Date</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Category</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Status</th>
+                      <th className="text-right py-4 px-6 font-semibold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingEvents.map((event) => (
+                      <tr key={event.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
+                        <td className="py-4 px-6">
+                          <div>
+                            <p className="font-medium text-gray-900">{event.title}</p>
+                            <p className="text-sm text-gray-600">${event.ticketPrice} • {event.expectedAttendees} expected</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">{event.organizer}</td>
+                        <td className="py-4 px-6 text-gray-600">{event.date}</td>
+                        <td className="py-4 px-6">
+                          <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
+                            {event.category}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                            {event.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex justify-end space-x-2">
+                            <button className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 transition-colors duration-200">
+                              Approve
+                            </button>
+                            <button className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition-colors duration-200">
+                              Reject
+                            </button>
+                            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'refunds' && (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">User</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Event</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Amount</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Reason</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-900">Status</th>
+                      <th className="text-right py-4 px-6 font-semibold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {refundRequests.map((request) => (
+                      <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
+                        <td className="py-4 px-6">
+                          <div>
+                            <p className="font-medium text-gray-900">{request.userName}</p>
+                            <p className="text-sm text-gray-600">{request.userEmail}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="font-medium text-gray-900">{request.eventTitle}</p>
+                          <p className="text-sm text-gray-600">Requested: {request.requestDate}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="font-bold text-gray-900">${request.amount}</span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <p className="text-sm text-gray-600 max-w-xs truncate">{request.reason}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                            {request.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex justify-end space-x-2">
+                            <button className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 transition-colors duration-200">
+                              Approve
+                            </button>
+                            <button className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition-colors duration-200">
+                              Deny
+                            </button>
+                            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
