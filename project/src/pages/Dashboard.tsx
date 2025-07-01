@@ -128,7 +128,7 @@ const Dashboard: React.FC = () => {
     <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Festive Banner */}
       <FestiveBanner 
-        title="🎉 Discover Amazing Events"
+        title="Discover Amazing Events"
         subtitle="Find and book tickets for the best events happening around you"
         image="https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1200"
       />
