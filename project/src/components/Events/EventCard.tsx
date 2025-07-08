@@ -17,9 +17,10 @@ interface EventCardProps {
     isPopular?: boolean;
   };
   showBookButton?: boolean;
+  onBookClick?: () => void;
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, showBookButton = false }) => {
+const EventCard: React.FC<EventCardProps> = ({ event, showBookButton = false, onBookClick }) => {
   return (
     <Link
       to={`/event/${event.id}`}
@@ -85,10 +86,12 @@ const EventCard: React.FC<EventCardProps> = ({ event, showBookButton = false }) 
           {/* Book Ticket Button */}
           {showBookButton && (
             <div className="pt-4">
-              <button 
+              <button
                 onClick={(e) => {
                   e.preventDefault();
-                  // Handle booking logic here
+                  if (onBookClick) {
+                    onBookClick();
+                  }
                 }}
                 className="w-full bg-primary-500 text-white py-2 px-4 rounded-xl font-medium hover:bg-primary-600 transition-colors duration-300 flex items-center justify-center"
               >

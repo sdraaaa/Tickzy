@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout/Layout';
-import Dashboard from './pages/Dashboard';
+import LandingPage from './pages/LandingPage';
+import DashboardRedirect from './pages/DashboardRedirect';
 import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import EventDetails from './pages/EventDetails';
@@ -11,25 +13,38 @@ import Profile from './pages/Profile';
 import HostDashboard from './pages/HostDashboard';
 import CreateEvent from './pages/CreateEvent';
 
+
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="user" element={<UserDashboard />} />
-            <Route path="event/:id" element={<EventDetails />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="host" element={<HostDashboard />} />
-            <Route path="host/create" element={<CreateEvent />} />
-          </Route>
-        </Routes>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            {/* Dashboard Redirect */}
+            <Route path="/dashboard" element={<DashboardRedirect />} />
+
+            {/* Admin Route (standalone) */}
+            <Route path="/admin" element={<AdminDashboard />} />
+
+            {/* Profile Route (accessible to all authenticated users) */}
+            <Route path="/profile" element={<Profile />} />
+
+            {/* Protected Routes with Layout */}
+            <Route element={<Layout />}>
+              <Route path="/user-dashboard" element={<UserDashboard />} />
+              <Route path="/host-dashboard" element={<HostDashboard />} />
+              <Route path="/event/:id" element={<EventDetails />} />
+              <Route path="/host/create" element={<CreateEvent />} />
+            </Route>
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 

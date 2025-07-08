@@ -1,9 +1,24 @@
 import React, { useState } from 'react';
-import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter } from 'lucide-react';
+import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter, LogOut, UserCircle, Settings } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const navigate = useNavigate();
+  const { logout, currentUser } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+      navigate('/', { replace: true });
+    }
+  };
 
   // Mock data
   const stats = {
@@ -118,8 +133,79 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="pt-20 min-h-screen bg-gray-50">
-      <div className="flex">
+    <div className="min-h-screen bg-gray-50">
+      {/* Admin Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2 group">
+              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center group-hover:bg-primary-600 transition-colors duration-300">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-gray-900">Tickzy Admin</span>
+            </Link>
+
+            {/* Right Section */}
+            <div className="flex items-center space-x-4">
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded-xl transition-all duration-300"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center">
+                    <UserCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="hidden lg:block text-sm font-medium text-gray-700">
+                    {currentUser?.email || 'Admin'}
+                  </span>
+                </button>
+
+                {/* Dropdown Menu */}
+                {showProfileDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-card border border-gray-100 py-2 z-50">
+                    <Link
+                      to="/profile"
+                      className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                      onClick={() => setShowProfileDropdown(false)}
+                    >
+                      <UserCircle className="w-4 h-4 mr-3" />
+                      View Profile
+                    </Link>
+                    <Link
+                      to="/settings"
+                      className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                      onClick={() => setShowProfileDropdown(false)}
+                    >
+                      <Settings className="w-4 h-4 mr-3" />
+                      Settings
+                    </Link>
+                    <hr className="my-2 border-gray-100" />
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-200"
+                    >
+                      <LogOut className="w-4 h-4 mr-3" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Click outside to close dropdown */}
+        {showProfileDropdown && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setShowProfileDropdown(false)}
+          />
+        )}
+      </header>
+
+      <div className="pt-20 flex">
         {/* Sidebar */}
         <div className="w-64 bg-white shadow-soft min-h-screen">
           <div className="p-6">

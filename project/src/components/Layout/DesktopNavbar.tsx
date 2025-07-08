@@ -1,16 +1,24 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Bell, User, Calendar, Menu, X, LogOut, Settings, UserCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DesktopNavbar: React.FC = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [notifications, setNotifications] = useState(3);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
-  const handleLogout = () => {
-    // Clear any auth tokens/session data here
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still navigate even if logout fails
+      navigate('/', { replace: true });
+    }
   };
 
   return (
