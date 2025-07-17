@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { verifyUserRole } from '@/utils/roleProtection';
 
 const DashboardRedirect: React.FC = () => {
   const navigate = useNavigate();
@@ -16,15 +17,25 @@ const DashboardRedirect: React.FC = () => {
     if (!loading) {
       if (currentUser && userData) {
         // User is authenticated, redirect based on role
+        console.log(`🔄 Redirecting user ${currentUser.email} with role: ${userData.role}`);
+
+        // Verify role integrity for debugging
+        if (process.env.NODE_ENV === 'development') {
+          verifyUserRole(currentUser.uid, userData.role);
+        }
+
         switch (userData.role) {
           case "admin":
+            console.log(`✅ Redirecting admin user to /admin`);
             navigate("/admin", { replace: true });
             break;
           case "host":
+            console.log(`✅ Redirecting host user to /host-dashboard`);
             navigate("/host-dashboard", { replace: true });
             break;
           case "user":
           default:
+            console.log(`✅ Redirecting user to /user-dashboard`);
             navigate("/user-dashboard", { replace: true });
             break;
         }

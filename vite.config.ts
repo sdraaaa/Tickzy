@@ -13,4 +13,9 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    port: 3000,
+    strictPort: true, // Exit if port 3000 is already in use
+    host: true, // Allow external connections
+  },
 });

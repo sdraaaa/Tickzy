@@ -16,11 +16,20 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Google Auth Provider
+// Configure Firebase Auth persistence (should be enabled by default, but let's be explicit)
+// This ensures authentication state persists across browser sessions
+console.log('🔧 Firebase Auth persistence is enabled by default for web apps');
+
+// Google Auth Provider with enhanced configuration for production
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
-  prompt: 'select_account'
+  prompt: 'select_account', // Always show account selection
+  hd: undefined, // Allow any domain (remove if you want to restrict to specific domains)
 });
+
+// Add scopes for better user experience
+googleProvider.addScope('email');
+googleProvider.addScope('profile');
 
 // Comprehensive authentication state clearing utility
 export const clearAllAuthenticationState = async () => {

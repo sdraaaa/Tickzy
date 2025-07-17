@@ -1,67 +1,123 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Star, Share2, Heart, Clock, DollarSign, Info } from 'lucide-react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Calendar, MapPin, Users, Star, Share2, Heart, Clock, DollarSign, Info, ArrowLeft, ImageIcon } from 'lucide-react';
+import PublicNavbar from '@/components/Layout/PublicNavbar';
+import { useAuth } from '@/contexts/AuthContext';
+import { subscribeToEvent, Event } from '@/services/eventsService';
 
 const EventDetails: React.FC = () => {
   const { id } = useParams();
-  const [event, setEvent] = useState<any>(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { currentUser } = useAuth();
+  const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedTickets, setSelectedTickets] = useState(1);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
-  // Mock event data - replace with actual API call
+  // Check if user came here with booking intent
+  const bookingIntent = searchParams.get('booking') === 'true';
+
+  // Scroll to top when component mounts or route parameters change
   useEffect(() => {
-    setTimeout(() => {
-      setEvent({
-        id: '1',
-        title: 'Summer Music Festival 2024',
-        image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1200',
-        date: 'August 15, 2024',
-        time: '6:00 PM - 11:00 PM',
-        location: 'Central Park, New York, NY',
-        price: 89,
-        category: 'Music',
-        attendees: 1250,
-        rating: 4.8,
-        description: 'Join us for an unforgettable evening of music at the Summer Music Festival 2024. Featuring top artists from around the world, this outdoor concert promises to be the highlight of the summer. Experience amazing performances, great food, and an electric atmosphere under the stars.',
-        highlights: [
-          'World-class performers',
-          'Food trucks and vendors',
-          'VIP packages available',
-          'Professional sound system',
-          'Secure parking available'
-        ],
-        ticketTypes: [
-          { id: 1, name: 'General Admission', price: 89, description: 'Access to main event area' },
-          { id: 2, name: 'VIP Package', price: 199, description: 'Premium seating + backstage access' },
-          { id: 3, name: 'Early Bird', price: 69, description: 'Limited time offer', soldOut: true },
-        ],
-        organizer: {
-          name: 'EventPro Productions',
-          rating: 4.9,
-          events: 127,
-          avatar: 'https://images.pexels.com/photos/3184317/pexels-photo-3184317.jpeg?auto=compress&cs=tinysrgb&w=400'
-        }
+    window.scrollTo(0, 0);
+  }, [id]); // Re-run when event ID changes
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoading(false);
+  };
+
+  const handleBooking = () => {
+    if (!currentUser) {
+      // Store the current URL for redirect after login (use pathname + search to avoid full URL)
+      const returnUrl = window.location.pathname + window.location.search;
+      console.log('🔍 EventDetails storing returnUrl:', returnUrl);
+      console.log('🔍 EventDetails window.location:', {
+        href: window.location.href,
+        pathname: window.location.pathname,
+        search: window.location.search
       });
+
+      sessionStorage.setItem('returnUrl', returnUrl);
+      sessionStorage.setItem('bookingIntent', 'true');
+
+      // Navigate to login with booking message
+      const message = encodeURIComponent('Please log in to book tickets for this event');
+      navigate(`/login?message=${message}`);
+    } else {
+      // User is authenticated, proceed with booking confirmation
+      const bookingParams = new URLSearchParams({
+        eventId: event.id,
+        eventTitle: event.title,
+        eventDate: event.date,
+        eventLocation: event.location,
+        ticketCount: selectedTickets.toString(),
+        totalPrice: (event.price * selectedTickets).toString(),
+        eventImage: event.image
+      });
+
+      navigate(`/booking/confirmation?${bookingParams.toString()}`);
+    }
+  };
+
+  // Fetch event data from Firebase based on ID parameter
+  useEffect(() => {
+    if (!id) {
       setLoading(false);
-    }, 1000);
+      setError('No event ID provided');
+      return;
+    }
+
+    // Reset image states when event ID changes
+    setImageError(false);
+    setImageLoading(true);
+    setLoading(true);
+    setError(null);
+
+    const unsubscribe = subscribeToEvent(id, (eventData) => {
+      if (eventData) {
+        setEvent(eventData);
+        setError(null);
+      } else {
+        setEvent(null);
+        setError('Event not found');
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [id]);
 
   if (loading) {
     return (
-      <div className="pt-16 min-h-screen">
-        <div className="animate-pulse">
-          <div className="h-96 bg-gray-200"></div>
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-4 bg-gray-200 rounded"></div>
-                ))}
+      <div className="min-h-screen bg-gray-50">
+        <PublicNavbar />
+        <div className="pt-20 min-h-screen">
+          <div className="animate-pulse">
+            <div className="h-96 bg-gray-200"></div>
+            <div className="max-w-7xl mx-auto px-4 py-8">
+              <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
+              <div className="grid lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-4 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+                <div className="h-96 bg-gray-200 rounded-2xl"></div>
               </div>
-              <div className="h-96 bg-gray-200 rounded-2xl"></div>
             </div>
           </div>
         </div>
@@ -69,29 +125,79 @@ const EventDetails: React.FC = () => {
     );
   }
 
-  if (!event) {
+  if (error || !event) {
     return (
-      <div className="pt-16 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Event Not Found</h1>
-          <Link to="/" className="btn-primary">
-            Back to Events
-          </Link>
+      <div className="min-h-screen bg-gray-50">
+        <PublicNavbar />
+        <div className="pt-20 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+              {error || 'Event Not Found'}
+            </h1>
+            <p className="text-gray-600 mb-6">
+              {error ? 'There was an error loading this event.' : 'The event you\'re looking for doesn\'t exist.'}
+            </p>
+            <div className="space-x-4">
+              <Link to="/" className="btn-primary">
+                Back to Events
+              </Link>
+              {error && (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn-secondary"
+                >
+                  Try Again
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="pt-16 min-h-screen">
-      {/* Hero Image */}
-      <div className="relative h-96 overflow-hidden">
-        <img
-          src={event.image}
-          alt={event.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+    <div className="min-h-screen bg-gray-50">
+      <PublicNavbar />
+      <div className="pt-20 min-h-screen">
+        {/* Back Button */}
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <Link
+            to="/"
+            className="inline-flex items-center text-gray-600 hover:text-primary-500 transition-colors duration-300"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Events
+          </Link>
+        </div>
+
+        {/* Hero Image */}
+        <div className="relative h-96 overflow-hidden bg-gray-200">
+          {imageLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+            </div>
+          )}
+
+          {imageError ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+              <div className="text-center text-gray-400">
+                <ImageIcon className="w-16 h-16 mx-auto mb-4" />
+                <p className="text-lg">Event image not available</p>
+              </div>
+            </div>
+          ) : (
+            <img
+              src={event.image}
+              alt={event.title}
+              className="w-full h-full object-cover"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              style={{ display: imageLoading ? 'none' : 'block' }}
+            />
+          )}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         
         {/* Action Buttons */}
         <div className="absolute top-6 right-6 flex space-x-3">
@@ -193,6 +299,15 @@ const EventDetails: React.FC = () => {
           {/* Booking Sidebar */}
           <div className="lg:sticky lg:top-24 lg:self-start">
             <div className="bg-white rounded-2xl p-6 shadow-card">
+              {/* Booking Intent Notification */}
+              {bookingIntent && currentUser && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <p className="text-sm text-green-700 font-medium">
+                    ✅ You're now logged in! Complete your booking below.
+                  </p>
+                </div>
+              )}
+
               <h2 className="text-xl font-bold text-gray-900 mb-6">Select Tickets</h2>
               
               {/* Ticket Types */}
@@ -253,9 +368,12 @@ const EventDetails: React.FC = () => {
               </div>
 
               {/* Book Button */}
-              <button className="w-full btn-primary mb-4">
+              <button
+                onClick={handleBooking}
+                className="w-full btn-primary mb-4 flex items-center justify-center"
+              >
                 <DollarSign className="w-5 h-5 mr-2" />
-                Book Now
+                {currentUser ? 'Book Now' : 'Login to Book'}
               </button>
 
               <p className="text-xs text-gray-500 text-center">
@@ -265,6 +383,7 @@ const EventDetails: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

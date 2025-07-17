@@ -1,92 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, TrendingUp, MapPin, Search, Ticket, Heart, Clock } from 'lucide-react';
 import EventGrid from '../components/Events/EventGrid';
 import CategoryFilter from '../components/UI/CategoryFilter';
 import FestiveBanner from '../components/UI/FestiveBanner';
+import { useAuth } from '@/contexts/AuthContext';
+import { subscribeToEventsWithLimit, Event } from '@/services/eventsService';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with actual API call
-  const mockEvents = [
-    {
-      id: '1',
-      title: 'Summer Music Festival 2024',
-      image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Aug 15, 2024',
-      time: '6:00 PM',
-      location: 'Central Park, New York',
-      price: 89,
-      category: 'Music',
-      attendees: 1250,
-      rating: 4.8,
-      isPopular: true,
-    },
-    {
-      id: '2',
-      title: 'Tech Conference 2024',
-      image: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Sep 20, 2024',
-      time: '9:00 AM',
-      location: 'Convention Center, San Francisco',
-      price: 299,
-      category: 'Business',
-      attendees: 500,
-      rating: 4.6,
-    },
-    {
-      id: '3',
-      title: 'Food & Wine Tasting',
-      image: 'https://images.pexels.com/photos/1581384/pexels-photo-1581384.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Aug 25, 2024',
-      time: '7:00 PM',
-      location: 'Downtown Restaurant, Chicago',
-      price: 125,
-      category: 'Lifestyle',
-      attendees: 75,
-      rating: 4.9,
-    },
-    {
-      id: '4',
-      title: 'Art Gallery Opening',
-      image: 'https://images.pexels.com/photos/1194420/pexels-photo-1194420.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Sep 5, 2024',
-      time: '6:30 PM',
-      location: 'Modern Art Museum, Los Angeles',
-      price: 45,
-      category: 'Arts',
-      attendees: 200,
-      rating: 4.4,
-    },
-    {
-      id: '5',
-      title: 'Gaming Championship',
-      image: 'https://images.pexels.com/photos/3165335/pexels-photo-3165335.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Oct 1, 2024',
-      time: '2:00 PM',
-      location: 'Gaming Arena, Austin',
-      price: 65,
-      category: 'Gaming',
-      attendees: 800,
-      rating: 4.7,
-      isPopular: true,
-    },
-    {
-      id: '6',
-      title: 'Marathon & Fun Run',
-      image: 'https://images.pexels.com/photos/2402777/pexels-photo-2402777.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Sep 15, 2024',
-      time: '7:00 AM',
-      location: 'City Park, Miami',
-      price: 35,
-      category: 'Sports',
-      attendees: 2000,
-      rating: 4.5,
-    },
-  ];
+  // Load events from Firebase with real-time updates
 
   // Mock user tickets
   const userTickets = [
@@ -113,16 +42,37 @@ const Dashboard: React.FC = () => {
   ];
 
   useEffect(() => {
-    // Simulate API loading
-    setTimeout(() => {
-      setEvents(mockEvents);
-      setLoading(false);
-    }, 1500);
-  }, []);
+    setLoading(true);
+    setError(null);
 
-  const filteredEvents = selectedCategory === 'all' 
-    ? events 
-    : events.filter(event => event.category.toLowerCase() === selectedCategory);
+    const unsubscribe = subscribeToEventsWithLimit((fetchedEvents) => {
+      setEvents(fetchedEvents);
+      setLoading(false);
+    }, 6, selectedCategory); // Limit to 6 events for dashboard
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [selectedCategory]);
+
+  const filteredEvents = events; // Events are already filtered by the subscription
+
+  const handleBooking = (event: any) => {
+    if (!currentUser) {
+      // Store the intended booking URL for redirect after login
+      sessionStorage.setItem('returnUrl', `/event/${event.id}?booking=true`);
+      sessionStorage.setItem('bookingIntent', 'true');
+
+      // Navigate to login with booking message
+      const message = encodeURIComponent('Please log in to book tickets for this event');
+      navigate(`/login?message=${message}`);
+    } else {
+      // User is authenticated, navigate to event details page
+      navigate(`/event/${event.id}`);
+    }
+  };
 
   return (
     <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -240,36 +190,45 @@ const Dashboard: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {events.slice(0, 3).map((event) => (
-            <Link
+            <div
               key={event.id}
-              to={`/event/${event.id}`}
-              className="block bg-white rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-300 overflow-hidden group"
+              className="bg-white rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-300 overflow-hidden group"
             >
-              <div className="relative h-48">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-xl">
-                  <Heart className="w-4 h-4 text-gray-600" />
+              <Link to={`/event/${event.id}`} className="block">
+                <div className="relative h-48">
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-xl">
+                    <Heart className="w-4 h-4 text-gray-600" />
+                  </div>
                 </div>
-              </div>
-              <div className="p-6">
-                <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{event.title}</h3>
-                <div className="flex items-center text-gray-600 mb-3">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{event.date}</span>
+                <div className="p-6 pb-4">
+                  <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{event.title}</h3>
+                  <div className="flex items-center text-gray-600 mb-3">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{event.date}</span>
+                  </div>
                 </div>
+              </Link>
+              <div className="px-6 pb-6">
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-bold text-primary-500">${event.price}</span>
-                  <button className="bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-600 transition-colors duration-300">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleBooking(event);
+                    }}
+                    className="bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-600 transition-colors duration-300"
+                  >
                     <Ticket className="w-4 h-4 mr-1 inline" />
-                    Book Now
+                    {currentUser ? 'Book Now' : 'Login to Book'}
                   </button>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       </div>

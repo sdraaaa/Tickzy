@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar, Mail, Lock, Eye, EyeOff, User, ArrowRight } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { allowRoleModification } from '@/utils/firestoreMonitor';
 
 const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -21,18 +22,63 @@ const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { currentUser, userData, loading: authLoading } = useAuth();
 
-  // Redirect authenticated users to dashboard (but not during OAuth flow)
-  useEffect(() => {
-    if (!authLoading && currentUser && !isOAuthInProgress) {
-      console.log('🔄 Register: Authenticated user detected, redirecting to dashboard');
-      console.log('   User:', currentUser.email);
-      navigate('/dashboard', { replace: true });
-    } else if (!authLoading && !currentUser) {
-      console.log('✅ Register: No authenticated user, staying on register page');
+  // Get return URL and booking intent from session storage
+  const getReturnUrl = () => {
+    const returnUrl = sessionStorage.getItem('returnUrl');
+    const bookingIntent = sessionStorage.getItem('bookingIntent');
+
+    if (returnUrl && bookingIntent) {
+      return returnUrl;
     }
-  }, [currentUser, authLoading, navigate, isOAuthInProgress]);
+    return '/dashboard';
+  };
+
+  // Handle navigation after authentication
+  useEffect(() => {
+    if (!authLoading && currentUser && userData) {
+      console.log('🔄 Register: User authenticated, determining destination...', {
+        user: currentUser.email,
+        role: userData.role
+      });
+
+      // Determine destination based on user role and stored URLs
+      let destination = '/dashboard'; // Default fallback
+
+      // Check for stored return URL first
+      const storedReturnUrl = sessionStorage.getItem('returnUrl');
+      const bookingIntent = sessionStorage.getItem('bookingIntent');
+
+      if (storedReturnUrl && bookingIntent && storedReturnUrl.startsWith('/')) {
+        destination = storedReturnUrl;
+      } else {
+        // Navigate to role-based dashboard
+        switch (userData.role) {
+          case 'admin':
+            destination = '/admin';
+            break;
+          case 'host':
+            destination = '/host-dashboard';
+            break;
+          case 'user':
+          default:
+            destination = '/user-dashboard';
+            break;
+        }
+      }
+
+      console.log('🔄 Register: Navigating to:', destination);
+
+      // Clear all stored URLs
+      sessionStorage.removeItem('returnUrl');
+      sessionStorage.removeItem('bookingIntent');
+
+      // Navigate to destination
+      navigate(destination, { replace: true });
+    }
+  }, [currentUser, userData, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +96,9 @@ const Register: React.FC = () => {
       const user = userCredential.user;
 
       // Create user document in Firestore
+      const operationId = `register-email-${user.uid}-${Date.now()}`;
+      allowRoleModification(operationId);
+
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         firstName: formData.firstName,
@@ -57,10 +106,13 @@ const Register: React.FC = () => {
         displayName: `${formData.firstName} ${formData.lastName}`,
         role: 'user', // Default role
         createdAt: new Date().toISOString(),
-      });
+      }, { merge: true }); // SAFEGUARD: Use merge to prevent overwriting existing data
 
-      // Redirect will be handled by DashboardRedirect component
-      navigate('/dashboard');
+      // Redirect to appropriate destination (dashboard or booking page)
+      const destination = getReturnUrl();
+      sessionStorage.removeItem('returnUrl');
+      sessionStorage.removeItem('bookingIntent');
+      navigate(destination);
     } catch (error: any) {
       setError(error.message || 'Failed to create account');
     } finally {
@@ -92,18 +144,75 @@ const Register: React.FC = () => {
           role: 'user', // Default role
           createdAt: new Date().toISOString(),
         };
-        await setDoc(userDocRef, userData);
+        const operationId = `register-google-${result.user.uid}-${Date.now()}`;
+        allowRoleModification(operationId);
+
+        await setDoc(userDocRef, userData, { merge: true }); // SAFEGUARD: Use merge to prevent overwriting
         console.log('User document created:', userData);
       } else {
         console.log('User document already exists');
       }
 
-      console.log('Navigating to dashboard...');
-      // Navigate immediately, the AuthContext will handle the rest
-      navigate('/dashboard');
+      console.log('Navigating to appropriate destination...');
+      // Navigate to appropriate destination (dashboard or booking page)
+      const destination = getReturnUrl();
+      sessionStorage.removeItem('returnUrl');
+      sessionStorage.removeItem('bookingIntent');
+      navigate(destination);
     } catch (error: any) {
       console.error('Google sign up error:', error);
-      setError(error.message || 'Failed to sign up with Google');
+
+      // Enhanced error handling for production deployment issues
+      let errorMessage = 'Failed to sign up with Google';
+
+      switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'Sign-up was cancelled. Please try again.';
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = 'Pop-up was blocked. Please allow pop-ups for this site and try again.';
+          break;
+        case 'auth/cancelled-popup-request':
+          errorMessage = 'Sign-up was cancelled. Please try again.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+          break;
+        case 'auth/unauthorized-domain':
+          errorMessage = 'This domain is not authorized for Google sign-up. Please contact support.';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Google sign-up is not enabled. Please contact support.';
+          break;
+        case 'auth/invalid-api-key':
+          errorMessage = 'Authentication configuration error. Please contact support.';
+          break;
+        case 'auth/app-deleted':
+          errorMessage = 'Authentication service unavailable. Please contact support.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many sign-up attempts. Please wait a moment and try again.';
+          break;
+        case 'auth/account-exists-with-different-credential':
+          errorMessage = 'An account already exists with this email using a different sign-in method. Please try signing in instead.';
+          break;
+        case 'auth/web-storage-unsupported':
+          errorMessage = 'Your browser does not support web storage. Please enable cookies and try again.';
+          break;
+        default:
+          // Log detailed error for debugging in production
+          console.error('Unhandled Google OAuth error:', {
+            code: error.code,
+            message: error.message,
+            stack: error.stack,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href
+          });
+          errorMessage = `Sign-up failed: ${error.message || 'Unknown error'}. Please try again or contact support.`;
+      }
+
+      setError(errorMessage);
       setIsOAuthInProgress(false);
     } finally {
       setLoading(false);

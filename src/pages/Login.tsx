@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, googleProvider } from '@/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -15,14 +15,128 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
   const navigate = useNavigate();
-  const { currentUser, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { currentUser, userData, loading: authLoading } = useAuth();
 
-  // Redirect authenticated users to dashboard (but not during OAuth flow)
-  useEffect(() => {
-    if (!authLoading && currentUser && !isOAuthInProgress) {
-      navigate('/dashboard', { replace: true });
+  // Get return URL and booking intent from session storage or URL params
+  const getReturnUrl = () => {
+    const returnUrl = sessionStorage.getItem('returnUrl');
+    const bookingIntent = sessionStorage.getItem('bookingIntent');
+
+    console.log('🔍 Login getReturnUrl:', {
+      returnUrl,
+      bookingIntent,
+      currentLocation: window.location.href,
+      pathname: window.location.pathname
+    });
+
+    // Validate returnUrl to ensure it's a relative path
+    if (returnUrl && bookingIntent) {
+      if (returnUrl.startsWith('/')) {
+        return returnUrl;
+      } else {
+        console.warn('⚠️ Invalid returnUrl detected (not relative path):', returnUrl);
+        return '/dashboard';
+      }
     }
-  }, [currentUser, authLoading, navigate, isOAuthInProgress]);
+    return '/dashboard';
+  };
+
+  // Get login message from URL params
+  const loginMessage = searchParams.get('message');
+
+  // Debug current auth state on component mount
+  useEffect(() => {
+    console.log('🔍 Login component mounted, current auth state:', {
+      currentUser: currentUser ? currentUser.email : 'null',
+      userData: userData ? userData.role : 'null',
+      authLoading,
+      loading
+    });
+  }, []);
+
+  // Handle Google sign-in redirect result first (this runs once on page load)
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      console.log('🔍 Login: Checking for Google redirect result...');
+      try {
+        const result = await getRedirectResult(auth);
+        console.log('🔍 Login: getRedirectResult returned:', result ? 'User found' : 'No redirect result');
+
+        if (result) {
+          console.log('🔄 Google sign-in redirect successful, user:', result.user.email);
+          setIsOAuthInProgress(true); // Prevent other navigation logic from interfering
+
+          // Don't navigate here - let the AuthContext handle user creation and the next useEffect handle navigation
+          console.log('🔄 Waiting for AuthContext to process user data...');
+        } else {
+          console.log('🔍 Login: No Google redirect result found, user came to login normally');
+        }
+      } catch (error: any) {
+        console.error('Google sign-in redirect error:', error);
+        setError('Failed to complete Google sign-in. Please try again.');
+        setLoading(false);
+        setIsOAuthInProgress(false);
+      }
+    };
+
+    handleRedirectResult();
+  }, []); // Run only once on component mount
+
+  // Handle navigation after authentication (including after Google popup/redirect)
+  useEffect(() => {
+    if (!authLoading && currentUser && userData && !loading) {
+      console.log('🔄 Login: User authenticated, determining destination...', {
+        user: currentUser.email,
+        role: userData.role,
+        isOAuthInProgress,
+        loading
+      });
+
+      // Small delay to ensure all auth processing is complete
+      const navigationTimeout = setTimeout(() => {
+        // Determine destination based on user role and stored URLs
+        let destination = '/dashboard'; // Default fallback
+
+        // Check for stored return URL first
+        const storedReturnUrl = sessionStorage.getItem('returnUrl') || sessionStorage.getItem('pendingReturnUrl');
+        const bookingIntent = sessionStorage.getItem('bookingIntent');
+
+        if (storedReturnUrl && bookingIntent && storedReturnUrl.startsWith('/')) {
+          destination = storedReturnUrl;
+        } else {
+          // Navigate to role-based dashboard
+          switch (userData.role) {
+            case 'admin':
+              destination = '/admin';
+              break;
+            case 'host':
+              destination = '/host-dashboard';
+              break;
+            case 'user':
+            default:
+              destination = '/user-dashboard';
+              break;
+          }
+        }
+
+        console.log('🔄 Login: Navigating to:', destination);
+
+        // Clear all stored URLs
+        sessionStorage.removeItem('returnUrl');
+        sessionStorage.removeItem('pendingReturnUrl');
+        sessionStorage.removeItem('bookingIntent');
+
+        // Reset OAuth progress state
+        setIsOAuthInProgress(false);
+
+        // Navigate to destination
+        navigate(destination, { replace: true });
+      }, 100); // Small delay to ensure state is stable
+
+      return () => clearTimeout(navigationTimeout);
+    }
+  }, [currentUser, userData, authLoading, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,8 +145,8 @@ const Login: React.FC = () => {
 
     try {
       await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      // Redirect will be handled by DashboardRedirect component
-      navigate('/dashboard');
+      // Redirect will be handled by the useEffect above after AuthContext processes the user
+      console.log('🔄 Email/password sign-in successful, waiting for AuthContext...');
     } catch (error: any) {
       console.error('Email/password sign in error:', error);
 
@@ -62,24 +176,75 @@ const Login: React.FC = () => {
     setIsOAuthInProgress(true);
 
     try {
+      console.log('🔄 Attempting Google sign-in with popup first...');
       const result = await signInWithPopup(auth, googleProvider);
+      console.log('✅ Google popup sign-in successful:', result.user.email);
+      return;
+    } catch (popupError: any) {
+      console.log('⚠️ Popup failed, trying redirect method...', popupError.code);
 
-      // Let AuthContext handle user document creation and role assignment
-      // Navigate immediately, the AuthContext will handle the rest
-      navigate('/dashboard');
-    } catch (error: any) {
-      console.error('Google sign in error:', error);
+      if (popupError.code === 'auth/popup-blocked' ||
+          popupError.code === 'auth/popup-closed-by-user' ||
+          popupError.code === 'auth/cancelled-popup-request') {
+        try {
+          const destination = getReturnUrl();
+          console.log('🔄 Storing destination before Google redirect:', destination);
+          sessionStorage.setItem('pendingReturnUrl', destination);
+          console.log('🔄 Starting Google sign-in redirect...');
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectError: any) {
+          console.error('Both popup and redirect failed:', redirectError);
+        }
+      }
 
-      // Provide user-friendly error messages for Google OAuth
+      console.error('Google sign in error:', popupError);
       let errorMessage = 'Failed to sign in with Google';
-      if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = 'Sign-in was cancelled. Please try again.';
-      } else if (error.code === 'auth/popup-blocked') {
-        errorMessage = 'Pop-up was blocked. Please allow pop-ups and try again.';
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        errorMessage = 'Sign-in was cancelled. Please try again.';
-      } else if (error.code === 'auth/network-request-failed') {
-        errorMessage = 'Network error. Please check your connection and try again.';
+
+      switch (popupError.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = 'Sign-in was cancelled. Please try again.';
+          break;
+        case 'auth/popup-blocked':
+          errorMessage = 'Pop-up was blocked. Please allow pop-ups for this site and try again.';
+          break;
+        case 'auth/cancelled-popup-request':
+          errorMessage = 'Sign-in was cancelled. Please try again.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+          break;
+        case 'auth/unauthorized-domain':
+          errorMessage = 'This domain is not authorized for Google sign-in. Please contact support.';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Google sign-in is not enabled. Please contact support.';
+          break;
+        case 'auth/invalid-api-key':
+          errorMessage = 'Authentication configuration error. Please contact support.';
+          break;
+        case 'auth/app-deleted':
+          errorMessage = 'Authentication service unavailable. Please contact support.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many sign-in attempts. Please wait a moment and try again.';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Your account has been disabled. Please contact support.';
+          break;
+        case 'auth/web-storage-unsupported':
+          errorMessage = 'Your browser does not support web storage. Please enable cookies and try again.';
+          break;
+        default:
+          console.error('Unhandled Google OAuth error:', {
+            code: popupError.code,
+            message: popupError.message,
+            stack: popupError.stack,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href
+          });
+          errorMessage = `Authentication failed: ${popupError.message || 'Unknown error'}. Please try again or contact support.`;
       }
 
       setError(errorMessage);
@@ -117,6 +282,15 @@ const Login: React.FC = () => {
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
             <p className="text-gray-600">Choose your preferred sign-in method</p>
+
+            {/* Booking Intent Message */}
+            {loginMessage && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <p className="text-sm text-blue-700 font-medium">
+                  {loginMessage}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Google Sign In - Primary Option */}

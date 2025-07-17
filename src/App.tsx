@@ -12,12 +12,14 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import HostDashboard from './pages/HostDashboard';
 import CreateEvent from './pages/CreateEvent';
+import BookingConfirmation from './pages/BookingConfirmation';
+import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="min-h-screen bg-gray-50">
           <Routes>
             {/* Public Routes */}
@@ -34,11 +36,20 @@ function App() {
             {/* Profile Route (accessible to all authenticated users) */}
             <Route path="/profile" element={<Profile />} />
 
+            {/* Event Details Route (PUBLIC - no authentication required) */}
+            <Route path="/event/:id" element={<EventDetails />} />
+
+            {/* Booking Confirmation Route (PROTECTED - authentication required) */}
+            <Route path="/booking/confirmation" element={
+              <ProtectedRoute>
+                <BookingConfirmation />
+              </ProtectedRoute>
+            } />
+
             {/* Protected Routes with Layout */}
             <Route element={<Layout />}>
               <Route path="/user-dashboard" element={<UserDashboard />} />
               <Route path="/host-dashboard" element={<HostDashboard />} />
-              <Route path="/event/:id" element={<EventDetails />} />
               <Route path="/host/create" element={<CreateEvent />} />
             </Route>
           </Routes>

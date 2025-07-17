@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Calendar, Ticket, Heart, Clock, MapPin, Star, TrendingUp } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Calendar, Ticket, Heart, Clock, MapPin, Star, TrendingUp, User, Send, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import FestiveBanner from '../components/UI/FestiveBanner';
+import { useAuth } from '@/contexts/AuthContext';
+import { subscribeToPopularEvents, Event } from '@/services/eventsService';
+import { subscribeToUserHostStatus, submitHostRequest, HostStatus } from '@/services/hostService';
 
 const UserDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [recommendedEvents, setRecommendedEvents] = useState<Event[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Host request state
+  const [hostStatus, setHostStatus] = useState<HostStatus>('none');
+  const [hostRequestMessage, setHostRequestMessage] = useState('');
+  const [showHostRequestForm, setShowHostRequestForm] = useState(false);
+  const [hostRequestLoading, setHostRequestLoading] = useState(false);
+  const [hostRequestDate, setHostRequestDate] = useState<any>(null);
 
   // Mock user tickets
   const upcomingEvents = [
@@ -55,45 +69,38 @@ const UserDashboard: React.FC = () => {
     }
   ];
 
-  const recommendedEvents = [
-    {
-      id: '3',
-      title: 'Art Gallery Opening',
-      image: 'https://images.pexels.com/photos/1194420/pexels-photo-1194420.jpeg?auto=compress&cs=tinysrgb&w=400',
-      date: 'Sep 5, 2024',
-      time: '6:30 PM',
-      location: 'Modern Art Museum, Los Angeles',
-      price: 45,
-      rating: 4.4,
-      attendees: 200
-    },
-    {
-      id: '4',
-      title: 'Gaming Championship',
-      image: 'https://images.pexels.com/photos/3165335/pexels-photo-3165335.jpeg?auto=compress&cs=tinysrgb&w=400',
-      date: 'Oct 1, 2024',
-      time: '2:00 PM',
-      location: 'Gaming Arena, Austin',
-      price: 65,
-      rating: 4.7,
-      attendees: 800
-    },
-    {
-      id: '5',
-      title: 'Marathon & Fun Run',
-      image: 'https://images.pexels.com/photos/2402777/pexels-photo-2402777.jpeg?auto=compress&cs=tinysrgb&w=400',
-      date: 'Sep 15, 2024',
-      time: '7:00 AM',
-      location: 'City Park, Miami',
-      price: 35,
-      rating: 4.5,
-      attendees: 2000
-    }
-  ];
-
+  // Load recommended events from Firebase
   useEffect(() => {
-    setTimeout(() => setLoading(false), 1000);
+    setLoading(true);
+    setError(null);
+
+    const unsubscribe = subscribeToPopularEvents((fetchedEvents) => {
+      setRecommendedEvents(fetchedEvents);
+      setLoading(false);
+    }, 3); // Limit to 3 recommended events
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
+
+  // Subscribe to user's host status
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const unsubscribe = subscribeToUserHostStatus(currentUser.uid, (hostData) => {
+      setHostStatus(hostData.hostStatus || 'none');
+      setHostRequestDate(hostData.hostRequestDate);
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [currentUser]);
 
   if (loading) {
     return (
@@ -110,10 +117,74 @@ const UserDashboard: React.FC = () => {
     );
   }
 
+  const handleBooking = (event: any) => {
+    if (!currentUser) {
+      // Store the intended booking URL for redirect after login
+      sessionStorage.setItem('returnUrl', `/event/${event.id}?booking=true`);
+      sessionStorage.setItem('bookingIntent', 'true');
+
+      // Navigate to login with booking message
+      const message = encodeURIComponent('Please log in to book tickets for this event');
+      navigate(`/login?message=${message}`);
+    } else {
+      // User is authenticated, navigate to event details page
+      navigate(`/event/${event.id}`);
+    }
+  };
+
+  const handleHostRequest = async () => {
+    if (!currentUser || !hostRequestMessage.trim()) return;
+
+    setHostRequestLoading(true);
+    try {
+      const success = await submitHostRequest(currentUser.uid, hostRequestMessage.trim());
+      if (success) {
+        setShowHostRequestForm(false);
+        setHostRequestMessage('');
+        // Status will be updated via the subscription
+      } else {
+        setError('Failed to submit host request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting host request:', error);
+      setError('Failed to submit host request. Please try again.');
+    } finally {
+      setHostRequestLoading(false);
+    }
+  };
+
+  const getHostStatusDisplay = () => {
+    switch (hostStatus) {
+      case 'pending':
+        return {
+          icon: <AlertCircle className="w-5 h-5 text-yellow-500" />,
+          text: 'Host Request Pending',
+          description: 'Your request to become a host is being reviewed by our admin team.',
+          color: 'yellow'
+        };
+      case 'approved':
+        return {
+          icon: <CheckCircle className="w-5 h-5 text-green-500" />,
+          text: 'Host Status: Approved',
+          description: 'Congratulations! You can now create events.',
+          color: 'green'
+        };
+      case 'rejected':
+        return {
+          icon: <XCircle className="w-5 h-5 text-red-500" />,
+          text: 'Host Request Rejected',
+          description: 'Your host request was not approved. You can submit a new request.',
+          color: 'red'
+        };
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Festive Banner */}
-      <FestiveBanner 
+      <FestiveBanner
         title="🎫 Welcome Back!"
         subtitle="Your personalized event dashboard"
         image="https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=1200"
@@ -157,6 +228,125 @@ const UserDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Host Request Section */}
+      {currentUser && (
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-soft">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <User className="w-6 h-6 text-primary-500 mr-3" />
+                <h2 className="text-xl font-bold text-gray-900">Host Status</h2>
+              </div>
+            </div>
+
+            {/* Host Status Display */}
+            {hostStatus !== 'none' && (
+              <div className={`mb-4 p-4 rounded-xl border ${
+                getHostStatusDisplay()?.color === 'yellow' ? 'bg-yellow-50 border-yellow-200' :
+                getHostStatusDisplay()?.color === 'green' ? 'bg-green-50 border-green-200' :
+                'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex items-start">
+                  {getHostStatusDisplay()?.icon}
+                  <div className="ml-3">
+                    <h3 className="font-semibold text-gray-900">{getHostStatusDisplay()?.text}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{getHostStatusDisplay()?.description}</p>
+                    {hostRequestDate && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Requested: {hostRequestDate}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Host Request Actions */}
+            {(hostStatus === 'none' || hostStatus === 'rejected') && !showHostRequestForm && (
+              <div className="text-center py-4">
+                <p className="text-gray-600 mb-4">
+                  Want to host your own events? Apply to become a host and start creating amazing experiences!
+                </p>
+                <button
+                  onClick={() => setShowHostRequestForm(true)}
+                  className="btn-primary flex items-center mx-auto"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Request to Become Host
+                </button>
+              </div>
+            )}
+
+            {/* Host Request Form */}
+            {showHostRequestForm && (
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-gray-900 mb-3">Host Application</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Why do you want to become a host? *
+                    </label>
+                    <textarea
+                      value={hostRequestMessage}
+                      onChange={(e) => setHostRequestMessage(e.target.value)}
+                      placeholder="Tell us about your experience, the types of events you'd like to host, and why you'd be a great host..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                      rows={4}
+                      maxLength={500}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {hostRequestMessage.length}/500 characters
+                    </p>
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleHostRequest}
+                      disabled={!hostRequestMessage.trim() || hostRequestLoading}
+                      className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {hostRequestLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Submit Request
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowHostRequestForm(false);
+                        setHostRequestMessage('');
+                      }}
+                      className="btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Approved Host Actions */}
+            {hostStatus === 'approved' && (
+              <div className="text-center py-4">
+                <Link
+                  to="/host/create"
+                  className="btn-primary flex items-center mx-auto"
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Create New Event
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Upcoming Events */}
       <div className="mb-8">
@@ -262,46 +452,55 @@ const UserDashboard: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {recommendedEvents.map((event) => (
-            <Link
+            <div
               key={event.id}
-              to={`/event/${event.id}`}
-              className="block bg-white rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-300 overflow-hidden group"
+              className="bg-white rounded-2xl shadow-soft hover:shadow-card-hover transition-all duration-300 overflow-hidden group"
             >
-              <div className="relative h-48">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-xl">
-                  <Heart className="w-4 h-4 text-gray-600 hover:text-red-500 transition-colors duration-300" />
+              <Link to={`/event/${event.id}`} className="block">
+                <div className="relative h-48">
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-xl">
+                    <Heart className="w-4 h-4 text-gray-600 hover:text-red-500 transition-colors duration-300" />
+                  </div>
+                  <div className="absolute bottom-4 right-4 bg-primary-500 text-white px-3 py-1 rounded-xl font-bold">
+                    ${event.price}
+                  </div>
                 </div>
-                <div className="absolute bottom-4 right-4 bg-primary-500 text-white px-3 py-1 rounded-xl font-bold">
-                  ${event.price}
+                <div className="p-6 pb-4">
+                  <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{event.title}</h3>
+                  <div className="flex items-center text-gray-600 mb-2">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <span className="text-sm">{event.date} • {event.time}</span>
+                  </div>
+                  <div className="flex items-center text-gray-600 mb-4">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <span className="text-sm truncate">{event.location}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="p-6">
-                <h3 className="font-bold text-gray-900 mb-2 line-clamp-2">{event.title}</h3>
-                <div className="flex items-center text-gray-600 mb-2">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  <span className="text-sm">{event.date} • {event.time}</span>
-                </div>
-                <div className="flex items-center text-gray-600 mb-4">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  <span className="text-sm truncate">{event.location}</span>
-                </div>
+              </Link>
+              <div className="px-6 pb-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
                     <span className="text-sm text-gray-600">{event.rating}</span>
                   </div>
-                  <button className="bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-600 transition-colors duration-300">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleBooking(event);
+                    }}
+                    className="bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-primary-600 transition-colors duration-300"
+                  >
                     <Ticket className="w-4 h-4 mr-1 inline" />
-                    Book Ticket
+                    {currentUser ? 'Book Ticket' : 'Login to Book'}
                   </button>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       </div>

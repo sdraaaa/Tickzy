@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter, LogOut, UserCircle, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter, LogOut, UserCircle, Settings, UserCheck, UserX, Clock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { subscribeToPendingHostRequests, subscribeToAllHostRequests, approveHostRequest, rejectHostRequest, HostRequest } from '@/services/hostService';
+import { subscribeToEvents, Event } from '@/services/eventsService';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -9,6 +11,42 @@ const AdminDashboard: React.FC = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth();
+
+  // State for host requests
+  const [pendingHostRequests, setPendingHostRequests] = useState<HostRequest[]>([]);
+  const [allHostRequests, setAllHostRequests] = useState<HostRequest[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Subscribe to host requests and events
+  useEffect(() => {
+    if (!currentUser) return;
+
+    setLoading(true);
+
+    // Subscribe to pending host requests
+    const unsubscribePending = subscribeToPendingHostRequests((requests) => {
+      setPendingHostRequests(requests);
+    });
+
+    // Subscribe to all host requests
+    const unsubscribeAll = subscribeToAllHostRequests((requests) => {
+      setAllHostRequests(requests);
+    });
+
+    // Subscribe to events
+    const unsubscribeEvents = subscribeToEvents((fetchedEvents) => {
+      setEvents(fetchedEvents);
+      setLoading(false);
+    });
+
+    return () => {
+      if (unsubscribePending) unsubscribePending();
+      if (unsubscribeAll) unsubscribeAll();
+      if (unsubscribeEvents) unsubscribeEvents();
+    };
+  }, [currentUser]);
 
   const handleLogout = async () => {
     try {
@@ -20,12 +58,53 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Mock data
+  const handleApproveHostRequest = async (userId: string) => {
+    if (!currentUser) return;
+
+    setActionLoading(userId);
+    try {
+      const success = await approveHostRequest(userId, currentUser.uid);
+      if (!success) {
+        alert('Failed to approve host request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error approving host request:', error);
+      alert('Failed to approve host request. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectHostRequest = async (userId: string) => {
+    if (!currentUser) return;
+
+    if (!confirm('Are you sure you want to reject this host request?')) return;
+
+    setActionLoading(userId);
+    try {
+      const success = await rejectHostRequest(userId, currentUser.uid);
+      if (!success) {
+        alert('Failed to reject host request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error rejecting host request:', error);
+      alert('Failed to reject host request. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Calculate stats from real data
   const stats = {
-    totalUsers: 15420,
-    pendingEvents: 23,
-    refundRequests: 8,
-    monthlyRevenue: 125000
+    totalUsers: allHostRequests.length + 100, // Approximate total users
+    pendingHostRequests: pendingHostRequests.length,
+    totalEvents: events.length,
+    approvedHosts: allHostRequests.filter(req => req.hostStatus === 'approved').length,
+    monthlyRevenue: events.reduce((total, event) => {
+      // Calculate revenue from events (assuming some basic pricing logic)
+      const eventRevenue = (event.price || 0) * (event.attendees?.length || 0);
+      return total + eventRevenue;
+    }, 0)
   };
 
   const users = [
@@ -128,7 +207,8 @@ const AdminDashboard: React.FC = () => {
 
   const tabs = [
     { id: 'users', name: 'Manage Users', icon: Users },
-    { id: 'events', name: 'Verify Events', icon: CheckCircle },
+    { id: 'host-requests', name: 'Host Requests', icon: UserCheck, badge: pendingHostRequests.length },
+    { id: 'events', name: 'Manage Events', icon: CheckCircle },
     { id: 'refunds', name: 'Refund Requests', icon: AlertTriangle }
   ];
 
@@ -225,20 +305,30 @@ const AdminDashboard: React.FC = () => {
               
               <div className="bg-yellow-50 p-4 rounded-xl">
                 <div className="flex items-center">
-                  <CheckCircle className="w-8 h-8 text-yellow-500" />
+                  <UserCheck className="w-8 h-8 text-yellow-500" />
                   <div className="ml-3">
-                    <p className="text-lg font-bold text-gray-900">{stats.pendingEvents}</p>
-                    <p className="text-sm text-gray-600">Pending Events</p>
+                    <p className="text-lg font-bold text-gray-900">{stats.pendingHostRequests}</p>
+                    <p className="text-sm text-gray-600">Pending Host Requests</p>
                   </div>
                 </div>
               </div>
-              
-              <div className="bg-red-50 p-4 rounded-xl">
+
+              <div className="bg-green-50 p-4 rounded-xl">
                 <div className="flex items-center">
-                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                  <CheckCircle className="w-8 h-8 text-green-500" />
                   <div className="ml-3">
-                    <p className="text-lg font-bold text-gray-900">{stats.refundRequests}</p>
-                    <p className="text-sm text-gray-600">Refund Requests</p>
+                    <p className="text-lg font-bold text-gray-900">{stats.totalEvents}</p>
+                    <p className="text-sm text-gray-600">Total Events</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-xl">
+                <div className="flex items-center">
+                  <Users className="w-8 h-8 text-blue-500" />
+                  <div className="ml-3">
+                    <p className="text-lg font-bold text-gray-900">{stats.approvedHosts}</p>
+                    <p className="text-sm text-gray-600">Approved Hosts</p>
                   </div>
                 </div>
               </div>
@@ -262,14 +352,21 @@ const AdminDashboard: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-all duration-300 ${
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all duration-300 ${
                       activeTab === tab.id
                         ? 'bg-primary-50 text-primary-600'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{tab.name}</span>
+                    <div className="flex items-center space-x-3">
+                      <Icon className="w-5 h-5" />
+                      <span className="font-medium">{tab.name}</span>
+                    </div>
+                    {tab.badge && tab.badge > 0 && (
+                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        {tab.badge}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -366,6 +463,146 @@ const AdminDashboard: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {activeTab === 'host-requests' && (
+              <div className="p-6">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Pending Requests */}
+                    {pendingHostRequests.length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          Pending Requests ({pendingHostRequests.length})
+                        </h3>
+                        <div className="space-y-4">
+                          {pendingHostRequests.map((request) => (
+                            <div key={request.uid} className="border border-yellow-200 bg-yellow-50 rounded-xl p-6">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center mb-2">
+                                    <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
+                                      <UserCheck className="w-5 h-5 text-yellow-600" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900">{request.displayName || 'Unknown User'}</h4>
+                                      <p className="text-sm text-gray-600">{request.email}</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="ml-13">
+                                    <p className="text-sm text-gray-600 mb-2">
+                                      <strong>Request Date:</strong> {request.hostRequestDate || 'Recently'}
+                                    </p>
+                                    <p className="text-sm text-gray-600 mb-3">
+                                      <strong>Message:</strong>
+                                    </p>
+                                    <div className="bg-white p-3 rounded-lg border">
+                                      <p className="text-sm text-gray-700">{request.hostRequestMessage || 'No message provided'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex space-x-2 ml-4">
+                                  <button
+                                    onClick={() => handleApproveHostRequest(request.uid)}
+                                    disabled={actionLoading === request.uid}
+                                    className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                  >
+                                    {actionLoading === request.uid ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    ) : (
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                    )}
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectHostRequest(request.uid)}
+                                    disabled={actionLoading === request.uid}
+                                    className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                  >
+                                    {actionLoading === request.uid ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    ) : (
+                                      <UserX className="w-4 h-4 mr-2" />
+                                    )}
+                                    Reject
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* All Requests History */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        All Host Requests ({allHostRequests.length})
+                      </h3>
+                      {allHostRequests.length === 0 ? (
+                        <div className="text-center py-12">
+                          <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600">No host requests yet</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="text-left py-3 px-4 font-semibold text-gray-900">User</th>
+                                <th className="text-left py-3 px-4 font-semibold text-gray-900">Request Date</th>
+                                <th className="text-left py-3 px-4 font-semibold text-gray-900">Status</th>
+                                <th className="text-left py-3 px-4 font-semibold text-gray-900">Processed Date</th>
+                                <th className="text-right py-3 px-4 font-semibold text-gray-900">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {allHostRequests.map((request) => (
+                                <tr key={request.uid} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
+                                  <td className="py-3 px-4">
+                                    <div>
+                                      <p className="font-medium text-gray-900">{request.displayName || 'Unknown User'}</p>
+                                      <p className="text-sm text-gray-600">{request.email}</p>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4 text-gray-600 text-sm">
+                                    {request.hostRequestDate || 'Recently'}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                      request.hostStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                      request.hostStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                      {request.hostStatus.charAt(0).toUpperCase() + request.hostStatus.slice(1)}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4 text-gray-600 text-sm">
+                                    {request.hostApprovedDate || '-'}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <div className="flex justify-end">
+                                      <button className="text-primary-500 hover:text-primary-600 text-sm font-medium">
+                                        View Details
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

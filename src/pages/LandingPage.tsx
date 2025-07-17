@@ -5,110 +5,52 @@ import PublicNavbar from '@/components/Layout/PublicNavbar';
 import Banner from '@/components/Banner';
 import EventCard from '@/components/Events/EventCard';
 import CategoryFilter from '@/components/UI/CategoryFilter';
+import { subscribeToEvents, Event } from '@/services/eventsService';
 
 const LandingPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
   // Landing page is always publicly accessible - no auto-redirects
   // Users will only be redirected when they explicitly click "Login" or access protected routes
 
-  // Mock events data - same as Dashboard
-  const mockEvents = [
-    {
-      id: '1',
-      title: 'Summer Music Festival 2024',
-      image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Aug 15, 2024',
-      time: '6:00 PM',
-      location: 'Central Park, New York',
-      price: 89,
-      category: 'Music',
-      attendees: 1250,
-      rating: 4.8,
-      isPopular: true,
-    },
-    {
-      id: '2',
-      title: 'Tech Conference 2024',
-      image: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Sep 20, 2024',
-      time: '9:00 AM',
-      location: 'Convention Center, San Francisco',
-      price: 299,
-      category: 'Business',
-      attendees: 500,
-      rating: 4.6,
-    },
-    {
-      id: '3',
-      title: 'Food & Wine Tasting',
-      image: 'https://images.pexels.com/photos/1581384/pexels-photo-1581384.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Aug 25, 2024',
-      time: '7:00 PM',
-      location: 'Downtown Restaurant, Chicago',
-      price: 125,
-      category: 'Lifestyle',
-      attendees: 75,
-      rating: 4.9,
-    },
-    {
-      id: '4',
-      title: 'Art Gallery Opening',
-      image: 'https://images.pexels.com/photos/1194420/pexels-photo-1194420.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Sep 5, 2024',
-      time: '6:30 PM',
-      location: 'Modern Art Museum, Los Angeles',
-      price: 45,
-      category: 'Arts',
-      attendees: 200,
-      rating: 4.4,
-    },
-    {
-      id: '5',
-      title: 'Gaming Championship',
-      image: 'https://images.pexels.com/photos/3165335/pexels-photo-3165335.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Oct 1, 2024',
-      time: '2:00 PM',
-      location: 'Gaming Arena, Austin',
-      price: 65,
-      category: 'Gaming',
-      attendees: 800,
-      rating: 4.7,
-      isPopular: true,
-    },
-    {
-      id: '6',
-      title: 'Marathon & Fun Run',
-      image: 'https://images.pexels.com/photos/2402777/pexels-photo-2402777.jpeg?auto=compress&cs=tinysrgb&w=800',
-      date: 'Sep 15, 2024',
-      time: '7:00 AM',
-      location: 'City Park, Miami',
-      price: 35,
-      category: 'Sports',
-      attendees: 2000,
-      rating: 4.5,
-    },
-  ];
-
+  // Load events from Firebase with real-time updates
   useEffect(() => {
-    // Simulate API loading
-    setTimeout(() => {
-      setEvents(mockEvents);
+    setLoading(true);
+    setError(null);
+
+    const unsubscribe = subscribeToEvents((fetchedEvents) => {
+      setEvents(fetchedEvents);
       setLoading(false);
-    }, 1000);
-  }, []);
+    }, selectedCategory);
 
-  const filteredEvents = selectedCategory === 'all' 
-    ? events 
-    : events.filter(event => event.category.toLowerCase() === selectedCategory);
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [selectedCategory]);
 
-  const handleUnauthenticatedBooking = () => {
-    alert('Please log in to book tickets for events!');
-    navigate('/login');
+  const filteredEvents = events; // Events are already filtered by the subscription
+
+  const handleBooking = (eventId?: string) => {
+    if (!currentUser) {
+      // Store the intended booking URL for redirect after login
+      const returnUrl = eventId ? `/event/${eventId}?booking=true` : window.location.pathname;
+      sessionStorage.setItem('returnUrl', returnUrl);
+      sessionStorage.setItem('bookingIntent', 'true');
+
+      // Navigate to login with a clear message
+      const message = encodeURIComponent('Please log in to book tickets for this event');
+      navigate(`/login?message=${message}`);
+    } else {
+      // User is authenticated, navigate to event details page
+      navigate(`/event/${eventId}`);
+    }
   };
 
   // Show loading while loading events
@@ -121,6 +63,28 @@ const LandingPage: React.FC = () => {
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading events...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <PublicNavbar />
+        <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Error loading events: {error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="btn-primary"
+              >
+                Try Again
+              </button>
             </div>
           </div>
         </div>
@@ -164,7 +128,7 @@ const LandingPage: React.FC = () => {
                 key={event.id}
                 event={event}
                 showBookButton={true}
-                onBookClick={handleUnauthenticatedBooking}
+                onBookClick={() => handleBooking(event.id)}
               />
             ))}
           </div>
