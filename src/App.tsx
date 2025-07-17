@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { getDomainInfo } from './utils/environmentHelper';
 import Layout from './components/Layout/Layout';
 import LandingPage from './pages/LandingPage';
 import DashboardRedirect from './pages/DashboardRedirect';
@@ -17,9 +18,15 @@ import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 
 function App() {
+  // Get the base path for routing based on deployment environment
+  const { basePath } = getDomainInfo();
+
   return (
     <AuthProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <Router
+        basename={basePath === '/' ? undefined : basePath.slice(0, -1)} // Remove trailing slash for basename
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <div className="min-h-screen bg-gray-50">
           <Routes>
             {/* Public Routes */}

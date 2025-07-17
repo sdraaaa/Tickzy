@@ -215,7 +215,7 @@ const Login: React.FC = () => {
           errorMessage = 'Network error. Please check your internet connection and try again.';
           break;
         case 'auth/unauthorized-domain':
-          errorMessage = 'This domain is not authorized for Google sign-in. Please contact support.';
+          errorMessage = `This domain (${window.location.hostname}) is not authorized for Google sign-in. Please add it to Firebase Console -> Authentication -> Settings -> Authorized domains.`;
           break;
         case 'auth/operation-not-allowed':
           errorMessage = 'Google sign-in is not enabled. Please contact support.';

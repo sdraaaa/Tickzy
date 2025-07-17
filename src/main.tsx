@@ -4,8 +4,12 @@ import App from './App.tsx';
 import './index.css';
 import { initializeDomainChecking } from './utils/authDomainHelper';
 import { initializeFirestoreMonitoring } from './utils/firestoreMonitor';
+import { logEnvironmentInfo } from './utils/environmentHelper';
 import './utils/seedData'; // Import seed data for development
 import './utils/debugHelpers'; // Import debug helpers for development
+
+// Log environment info for debugging
+logEnvironmentInfo();
 
 // Initialize domain checking for Google OAuth compatibility
 initializeDomainChecking();

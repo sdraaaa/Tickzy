@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:netlify": "vite build",
+    "build:github": "GITHUB_PAGES=true vite build",
+    "deploy:github": "node scripts/deploy-github.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:github": "GITHUB_PAGES=true vite build && vite preview --base=/Tickzy/"
   },
   "dependencies": {
     "firebase": "^11.10.0",
