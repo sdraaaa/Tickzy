@@ -82,7 +82,13 @@ const UserDashboard: React.FC = () => {
       const message = encodeURIComponent('Please log in to book tickets for this event');
       navigate(`/login?message=${message}`);
     } else {
-      // User is authenticated, navigate to event details page
+      // Check if user is admin - admins cannot book events
+      if (currentUser.email === 'aleemsidra2205@gmail.com') {
+        alert('Admins cannot book events. Admins are meant to manage and approve events, not book them as attendees.');
+        return;
+      }
+
+      // User is authenticated and not admin, navigate to event details page
       navigate(`/event/${event.id}`);
     }
   };
@@ -290,13 +296,25 @@ const UserDashboard: React.FC = () => {
             {/* Approved Host Actions */}
             {hostStatus === 'approved' && (
               <div className="text-center py-4">
-                <Link
-                  to="/host/create"
-                  className="btn-primary flex items-center mx-auto"
-                >
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Create New Event
-                </Link>
+                <p className="text-green-600 font-medium mb-4">
+                  ✅ You are now an approved host! You can create and manage events.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Link
+                    to="/host/create"
+                    className="btn-primary flex items-center justify-center"
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Create New Event
+                  </Link>
+                  <Link
+                    to="/host-dashboard"
+                    className="btn-secondary flex items-center justify-center"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Host Dashboard
+                  </Link>
+                </div>
               </div>
             )}
           </div>

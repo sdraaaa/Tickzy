@@ -17,6 +17,7 @@ import CreateEvent from './pages/CreateEvent';
 import BookingConfirmation from './pages/BookingConfirmation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import HostProtectedRoute from './components/Auth/HostProtectedRoute';
+import AdminProtectedRoute from './components/Auth/AdminProtectedRoute';
 
 
 function App() {
@@ -40,8 +41,12 @@ function App() {
             {/* Dashboard Redirect */}
             <Route path="/dashboard" element={<DashboardRedirect />} />
 
-            {/* Admin Route (standalone) */}
-            <Route path="/admin" element={<AdminDashboard />} />
+            {/* Admin Route (protected) */}
+            <Route path="/admin" element={
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            } />
 
             {/* Profile Route (accessible to all authenticated users) */}
             <Route path="/profile" element={<Profile />} />

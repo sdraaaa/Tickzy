@@ -53,7 +53,13 @@ const EventDetails: React.FC = () => {
       const message = encodeURIComponent('Please log in to book tickets for this event');
       navigate(`/login?message=${message}`);
     } else {
-      // User is authenticated, proceed with booking confirmation
+      // Check if user is admin - admins cannot book events
+      if (currentUser.email === 'aleemsidra2205@gmail.com') {
+        alert('Admins cannot book events. Admins are meant to manage and approve events, not book them as attendees.');
+        return;
+      }
+
+      // User is authenticated and not admin, proceed with booking confirmation
       const bookingParams = new URLSearchParams({
         eventId: event.id,
         eventTitle: event.title,
@@ -370,10 +376,20 @@ const EventDetails: React.FC = () => {
               {/* Book Button */}
               <button
                 onClick={handleBooking}
-                className="w-full btn-primary mb-4 flex items-center justify-center"
+                disabled={currentUser?.email === 'aleemsidra2205@gmail.com'}
+                className={`w-full mb-4 flex items-center justify-center ${
+                  currentUser?.email === 'aleemsidra2205@gmail.com'
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'btn-primary'
+                }`}
               >
                 <DollarSign className="w-5 h-5 mr-2" />
-                {currentUser ? 'Book Now' : 'Login to Book'}
+                {currentUser?.email === 'aleemsidra2205@gmail.com'
+                  ? 'Admins Cannot Book Events'
+                  : currentUser
+                    ? 'Book Now'
+                    : 'Login to Book'
+                }
               </button>
 
               <p className="text-xs text-gray-500 text-center">

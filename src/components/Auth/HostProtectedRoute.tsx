@@ -30,9 +30,9 @@ const HostProtectedRoute: React.FC<HostProtectedRouteProps> = ({ children }) => 
         return;
       }
 
-      // Check if user is admin (admins can always create events)
+      // Check if user is admin (admins cannot create events - they manage/approve only)
       if (userData.role === 'admin') {
-        setCanCreate(true);
+        setCanCreate(false);
         setLoading(false);
         return;
       }

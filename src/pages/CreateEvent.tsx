@@ -11,6 +11,20 @@ const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, userData } = useAuth();
 
+  // Debug: Log current user status
+  console.log('🔍 CreateEvent Debug:', {
+    currentUser: currentUser ? {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName
+    } : null,
+    userData: userData ? {
+      role: userData.role,
+      hostStatus: userData.hostStatus,
+      email: userData.email
+    } : null
+  });
+
   // Debug user authentication and role
   console.log('🔍 User Authentication Debug:', {
     isAuthenticated: !!currentUser,

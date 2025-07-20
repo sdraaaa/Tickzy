@@ -48,7 +48,13 @@ const LandingPage: React.FC = () => {
       const message = encodeURIComponent('Please log in to book tickets for this event');
       navigate(`/login?message=${message}`);
     } else {
-      // User is authenticated, navigate to event details page
+      // Check if user is admin - admins cannot book events
+      if (currentUser.email === 'aleemsidra2205@gmail.com') {
+        alert('Admins cannot book events. Admins are meant to manage and approve events, not book them as attendees.');
+        return;
+      }
+
+      // User is authenticated and not admin, navigate to event details page
       navigate(`/event/${eventId}`);
     }
   };

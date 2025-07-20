@@ -6,9 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 const DesktopNavbar: React.FC = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [notifications, setNotifications] = useState(3);
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, userData } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -49,23 +48,21 @@ const DesktopNavbar: React.FC = () => {
 
           {/* Right Section */}
           <div className="flex items-center space-x-4">
-            {/* Notifications */}
+            {/* Notifications - Real notification system will be implemented later */}
             <button className="relative p-2 text-gray-600 hover:text-primary-500 hover:bg-gray-50 rounded-xl transition-all duration-300">
               <Bell className="w-6 h-6" />
-              {notifications > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-                  {notifications}
-                </span>
-              )}
+              {/* Notification badge will show when real notifications are implemented */}
             </button>
 
-            {/* Host Button */}
-            <Link
-              to="/host"
-              className="hidden lg:block px-4 py-2 text-primary-500 hover:bg-primary-50 rounded-xl font-medium transition-all duration-300"
-            >
-              Host Events
-            </Link>
+            {/* Host Button - Only show for non-admin users */}
+            {userData?.role !== 'admin' && (
+              <Link
+                to="/host"
+                className="hidden lg:block px-4 py-2 text-primary-500 hover:bg-primary-50 rounded-xl font-medium transition-all duration-300"
+              >
+                Host Events
+              </Link>
+            )}
 
             {/* Profile Dropdown */}
             <div className="relative">

@@ -62,35 +62,7 @@ const HostDashboard: React.FC = () => {
     }, 0)
   };
 
-  const events = [
-    {
-      id: '1',
-      title: 'Summer Music Festival 2024',
-      date: 'Aug 15, 2024',
-      status: 'Published',
-      ticketsSold: 245,
-      revenue: 12250,
-      image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-    {
-      id: '2',
-      title: 'Tech Conference 2024',
-      date: 'Sep 20, 2024',
-      status: 'Draft',
-      ticketsSold: 0,
-      revenue: 0,
-      image: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-    {
-      id: '3',
-      title: 'Food & Wine Tasting',
-      date: 'Aug 25, 2024',
-      status: 'Published',
-      ticketsSold: 67,
-      revenue: 8375,
-      image: 'https://images.pexels.com/photos/1581384/pexels-photo-1581384.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-  ];
+  // Events data comes from Firebase - no mock data needed
 
   const getStatusColor = (status: string) => {
     switch (status) {

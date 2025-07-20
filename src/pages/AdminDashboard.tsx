@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter, LogOut, UserCircle, Settings, UserCheck, UserX, Clock, FileText, AlertCircle, Check, X } from 'lucide-react';
+import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter, LogOut, UserCircle, Settings, UserCheck, UserX, Clock, FileText, AlertCircle, Check, X, Bug, MapPin, Star, ImageIcon, Download } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToPendingHostRequests, subscribeToAllHostRequests, approveHostRequest, rejectHostRequest, HostRequest } from '@/services/hostService';
 import { subscribeToAllEvents, subscribeToPendingEvents, Event } from '@/services/eventsService';
 import { subscribeToEventApprovalStats, approveEvent, rejectEvent, bulkApproveEvents, bulkRejectEvents, EventApprovalStats } from '@/services/adminService';
 import { useNotifications, createEventNotifications } from '@/components/Notifications/NotificationSystem';
+import { logAdminDebugInfo, fixAdminRole, testEventApproval, isCurrentUserAdmin } from '@/utils/adminDebugger';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -33,6 +34,8 @@ const AdminDashboard: React.FC = () => {
   });
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
   const [processingEvents, setProcessingEvents] = useState<string[]>([]);
+  const [debugMode, setDebugMode] = useState(false);
+  const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
 
   // Subscribe to host requests and events
   useEffect(() => {
@@ -229,6 +232,174 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Handle viewing event details in admin context
+  const handleViewEvent = (event: Event) => {
+    setViewingEvent(event);
+  };
+
+  const handleCloseEventView = () => {
+    setViewingEvent(null);
+  };
+
+  // Debug functions
+  const handleDebugInfo = async () => {
+    await logAdminDebugInfo();
+    addNotification({
+      type: 'info',
+      title: 'Debug Info',
+      message: 'Check browser console for detailed debug information.',
+      duration: 5000
+    });
+  };
+
+  const handleFixAdminRole = async () => {
+    try {
+      const success = await fixAdminRole();
+      if (success) {
+        addNotification({
+          type: 'success',
+          title: 'Admin Role Fixed',
+          message: 'Your admin role has been corrected. Please refresh the page.',
+          duration: 7000
+        });
+      } else {
+        addNotification({
+          type: 'error',
+          title: 'Fix Failed',
+          message: 'Could not fix admin role. Check console for details.',
+          duration: 7000
+        });
+      }
+    } catch (error: any) {
+      addNotification({
+        type: 'error',
+        title: 'Fix Failed',
+        message: error.message || 'An error occurred while fixing admin role.',
+        duration: 7000
+      });
+    }
+  };
+
+  const handleTestEventApproval = async () => {
+    if (pendingEvents.length === 0) {
+      addNotification({
+        type: 'warning',
+        title: 'No Events to Test',
+        message: 'Create a pending event first to test approval.',
+        duration: 5000
+      });
+      return;
+    }
+
+    const testEventId = pendingEvents[0].id;
+    try {
+      const result = await testEventApproval(testEventId);
+      if (result.success) {
+        addNotification({
+          type: 'success',
+          title: 'Test Successful',
+          message: 'Event approval test passed! Check console for details.',
+          duration: 7000
+        });
+      } else {
+        addNotification({
+          type: 'error',
+          title: 'Test Failed',
+          message: `Event approval test failed: ${result.error}`,
+          duration: 7000
+        });
+      }
+    } catch (error: any) {
+      addNotification({
+        type: 'error',
+        title: 'Test Error',
+        message: error.message || 'An error occurred during testing.',
+        duration: 7000
+      });
+    }
+  };
+
+  // Emergency admin fix function - uses existing Firebase imports
+  const handleEmergencyAdminFix = async () => {
+    if (!currentUser) {
+      console.error('❌ No authenticated user');
+      return;
+    }
+
+    if (currentUser.email !== 'aleemsidra2205@gmail.com') {
+      console.error('❌ Not the admin email');
+      addNotification({
+        type: 'error',
+        title: 'Access Denied',
+        message: 'Only the designated admin can use this function.',
+        duration: 5000
+      });
+      return;
+    }
+
+    try {
+      console.log('🚨 EMERGENCY ADMIN FIX STARTING...');
+      console.log('Current user:', { uid: currentUser.uid, email: currentUser.email });
+      console.log('Expected document path: users/' + currentUser.uid);
+
+      // Use the same Firebase imports as the rest of the file
+      const { doc, setDoc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase/index');
+
+      const userDocRef = doc(db, 'users', currentUser.uid);
+
+      console.log('📝 Creating admin document...');
+
+      const adminData = {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName || 'Admin User',
+        photoURL: currentUser.photoURL || null,
+        role: 'admin',
+        isPreConfigured: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      console.log('📄 Admin data to write:', adminData);
+
+      await setDoc(userDocRef, adminData, { merge: true });
+
+      console.log('✅ Admin document created successfully!');
+
+      // Verify the document
+      const verifyDoc = await getDoc(userDocRef);
+      if (verifyDoc.exists()) {
+        const data = verifyDoc.data();
+        console.log('✅ VERIFICATION SUCCESSFUL:', data);
+        console.log('✅ Role confirmed:', data.role);
+        console.log('✅ Document exists at: users/' + currentUser.uid);
+
+        addNotification({
+          type: 'success',
+          title: '🚨 EMERGENCY FIX COMPLETE',
+          message: 'Admin role fixed! Refresh the page and try approving events now.',
+          duration: 10000
+        });
+      } else {
+        throw new Error('Document verification failed - document does not exist');
+      }
+    } catch (error: any) {
+      console.error('❌ EMERGENCY FIX FAILED:', error);
+      console.error('❌ Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
+      addNotification({
+        type: 'error',
+        title: 'Emergency Fix Failed',
+        message: 'Check console for error details: ' + error.message,
+        duration: 10000
+      });
+    }
+  };
+
   const handleRejectHostRequest = async (userId: string) => {
     if (!currentUser) return;
 
@@ -250,77 +421,18 @@ const AdminDashboard: React.FC = () => {
 
   // Calculate stats from real data
   const stats = {
-    totalUsers: allHostRequests.length + 100, // Approximate total users
+    totalUsers: allHostRequests.length, // Only count users who have requested host status (real data)
     pendingHostRequests: pendingHostRequests.length,
     totalEvents: eventStats.totalEvents,
     pendingEvents: eventStats.pendingEvents,
     approvedEvents: eventStats.approvedEvents,
     approvedHosts: allHostRequests.filter(req => req.hostStatus === 'approved').length,
-    monthlyRevenue: events.reduce((total, event) => {
-      // Calculate revenue from approved events only
-      if (event.status === 'approved') {
-        const eventRevenue = (event.price || 0) * (event.attendees || 0);
-        return total + eventRevenue;
-      }
-      return total;
-    }, 0)
+    monthlyRevenue: 0 // Revenue tracking will be implemented when booking system is complete
   };
 
-  const users = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'User',
-      joinDate: '2024-01-15',
-      status: 'Active',
-      eventsAttended: 12,
-      totalSpent: 450
-    },
-    {
-      id: '2',
-      name: 'Sarah Wilson',
-      email: 'sarah@example.com',
-      role: 'Host',
-      joinDate: '2024-02-20',
-      status: 'Active',
-      eventsHosted: 5,
-      totalRevenue: 12500
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      email: 'mike@example.com',
-      role: 'User',
-      joinDate: '2024-03-10',
-      status: 'Suspended',
-      eventsAttended: 3,
-      totalSpent: 150
-    }
-  ];
+  // Users data comes from Firebase - no mock data needed
 
-  const refundRequests = [
-    {
-      id: '1',
-      eventTitle: 'Cancelled Concert',
-      userName: 'Alice Brown',
-      userEmail: 'alice@example.com',
-      amount: 120,
-      reason: 'Event cancelled by organizer',
-      requestDate: '2024-07-10',
-      status: 'Pending'
-    },
-    {
-      id: '2',
-      eventTitle: 'Food Festival',
-      userName: 'Bob Smith',
-      userEmail: 'bob@example.com',
-      amount: 45,
-      reason: 'Unable to attend due to illness',
-      requestDate: '2024-07-12',
-      status: 'Under Review'
-    }
-  ];
+  // Refund requests will come from Firebase when implemented - no mock data needed
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -344,7 +456,8 @@ const AdminDashboard: React.FC = () => {
     { id: 'host-requests', name: 'Host Requests', icon: UserCheck, badge: pendingHostRequests.length },
     { id: 'events', name: 'Manage Events', icon: Calendar, badge: eventStats.totalEvents },
     { id: 'event-approvals', name: 'Event Approvals', icon: FileText, badge: eventStats.pendingEvents },
-    { id: 'refunds', name: 'Refund Requests', icon: AlertTriangle }
+    { id: 'refunds', name: 'Refund Requests', icon: AlertTriangle },
+    { id: 'debug', name: 'Debug Admin', icon: Bug }
   ];
 
   return (
@@ -574,48 +687,62 @@ const AdminDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user) => (
-                      <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
-                        <td className="py-4 px-6">
-                          <div>
-                            <p className="font-medium text-gray-900">{user.name}</p>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            user.role === 'Host' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-gray-600">{user.joinDate}</td>
-                        <td className="py-4 px-6">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
-                            {user.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6 text-gray-600">
-                          {user.role === 'Host' 
-                            ? `${user.eventsHosted} events hosted`
-                            : `${user.eventsAttended} events attended`
-                          }
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex justify-end space-x-2">
-                            <button className="p-2 text-gray-400 hover:text-primary-500 rounded-lg hover:bg-primary-50 transition-all duration-200">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 transition-all duration-200">
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all duration-200">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                    {allHostRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center">
+                          <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">No Users Found</h3>
+                          <p className="text-gray-600">Users will appear here as they register and request host access.</p>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      allHostRequests.map((user) => (
+                        <tr key={user.uid} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
+                          <td className="py-4 px-6">
+                            <div>
+                              <p className="font-medium text-gray-900">{user.displayName || 'Unknown User'}</p>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                              user.role === 'host' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-gray-600">
+                            {user.hostRequestDate ? new Date(user.hostRequestDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(user.hostStatus || 'none')}`}>
+                              {user.hostStatus || 'none'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-gray-600">
+                            {user.hostStatus === 'approved' ? 'Host activities' : 'User activities'}
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                className="p-2 text-gray-400 hover:text-primary-500 rounded-lg hover:bg-primary-50 transition-all duration-200"
+                                title="View User Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                className="p-2 text-gray-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 transition-all duration-200"
+                                title="Edit User"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -884,13 +1011,13 @@ const AdminDashboard: React.FC = () => {
                                     <X className="w-4 h-4" />
                                   )}
                                 </button>
-                                <Link
-                                  to={`/event/${event.id}`}
+                                <button
+                                  onClick={() => handleViewEvent(event)}
                                   className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                   title="View Event Details"
                                 >
                                   <Eye className="w-4 h-4" />
-                                </Link>
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -970,51 +1097,333 @@ const AdminDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {refundRequests.map((request) => (
-                      <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
-                        <td className="py-4 px-6">
-                          <div>
-                            <p className="font-medium text-gray-900">{request.userName}</p>
-                            <p className="text-sm text-gray-600">{request.userEmail}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <p className="font-medium text-gray-900">{request.eventTitle}</p>
-                          <p className="text-sm text-gray-600">Requested: {request.requestDate}</p>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="font-bold text-gray-900">${request.amount}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <p className="text-sm text-gray-600 max-w-xs truncate">{request.reason}</p>
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                            {request.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex justify-end space-x-2">
-                            <button className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 transition-colors duration-200">
-                              Approve
-                            </button>
-                            <button className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition-colors duration-200">
-                              Deny
-                            </button>
-                            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-all duration-200">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center">
+                        <AlertTriangle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Refund System Coming Soon</h3>
+                        <p className="text-gray-600">Refund request management will be available in a future update.</p>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {activeTab === 'debug' && (
+              <div className="p-6">
+                <div className="max-w-4xl mx-auto">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Admin Debug Panel</h2>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
+                      <p className="text-yellow-800">
+                        <strong>Debug Mode:</strong> Use these tools to diagnose and fix admin permission issues.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Debug Information */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Debug Information</h3>
+                      <p className="text-gray-600 mb-4">
+                        Get detailed information about your admin account status, role verification, and permissions.
+                      </p>
+                      <button
+                        onClick={handleDebugInfo}
+                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Bug className="w-4 h-4 inline mr-2" />
+                        Get Debug Info
+                      </button>
+                    </div>
+
+                    {/* Fix Admin Role */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Fix Admin Role</h3>
+                      <p className="text-gray-600 mb-4">
+                        If your account doesn't have admin permissions, this will correct your role in Firestore.
+                      </p>
+                      <button
+                        onClick={handleFixAdminRole}
+                        className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors mb-3"
+                      >
+                        <Settings className="w-4 h-4 inline mr-2" />
+                        Fix Admin Role
+                      </button>
+
+                      {/* Emergency Fix Button */}
+                      <button
+                        onClick={handleEmergencyAdminFix}
+                        className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        🚨 EMERGENCY FIX
+                      </button>
+                      <p className="text-xs text-red-600 mt-2">
+                        Use this if the regular fix doesn't work. Creates admin document directly.
+                      </p>
+                    </div>
+
+                    {/* Test Event Approval */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Test Event Approval</h3>
+                      <p className="text-gray-600 mb-4">
+                        Test the event approval functionality with detailed error logging.
+                      </p>
+                      <button
+                        onClick={handleTestEventApproval}
+                        className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <CheckCircle className="w-4 h-4 inline mr-2" />
+                        Test Event Approval
+                      </button>
+                    </div>
+
+                    {/* Current Status */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Status</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Email:</span>
+                          <span className="font-mono text-gray-900">{currentUser?.email}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">UID:</span>
+                          <span className="font-mono text-gray-900">{currentUser?.uid}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Role:</span>
+                          <span className="font-mono text-gray-900">{userData?.role}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Expected Admin:</span>
+                          <span className={`font-mono ${currentUser?.email === 'aleemsidra2205@gmail.com' ? 'text-green-600' : 'text-red-600'}`}>
+                            {currentUser?.email === 'aleemsidra2205@gmail.com' ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Instructions</h3>
+                    <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                      <li>First, click "Get Debug Info" and check the browser console for detailed information.</li>
+                      <li>If your role is not "admin", click "Fix Admin Role" to correct it.</li>
+                      <li>After fixing the role, refresh the page and try the event approval again.</li>
+                      <li>Use "Test Event Approval" to verify that the approval functionality works.</li>
+                      <li>If issues persist, check the Firestore security rules and ensure they allow admin operations.</li>
+                    </ol>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Admin Event Details Modal */}
+      {viewingEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-900">Event Details (Admin View)</h2>
+                <button
+                  onClick={handleCloseEventView}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Event Image */}
+                <div className="space-y-4">
+                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                    {viewingEvent.image ? (
+                      <img
+                        src={viewingEvent.image}
+                        alt={viewingEvent.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <ImageIcon className="w-16 h-16" />
+                    </div>
+                  </div>
+
+                  {/* Event Status */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-600">Status:</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      viewingEvent.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      viewingEvent.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      viewingEvent.status === 'cancelled' ? 'bg-gray-100 text-gray-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {viewingEvent.status || 'pending'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Event Details */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{viewingEvent.title}</h3>
+                    <p className="text-gray-600">{viewingEvent.description}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-600">Date</p>
+                        <p className="font-medium">{viewingEvent.date}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-600">Time</p>
+                        <p className="font-medium">{viewingEvent.time}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-600">Location</p>
+                        <p className="font-medium">{viewingEvent.location}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-600">Price</p>
+                        <p className="font-medium">${viewingEvent.price}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Users className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-600">Capacity</p>
+                        <p className="font-medium">{viewingEvent.attendees}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Star className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-600">Category</p>
+                        <p className="font-medium">{viewingEvent.category}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Organizer Info */}
+                  {viewingEvent.organizer && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Organizer</h4>
+                      <div className="flex items-center space-x-3">
+                        {viewingEvent.organizer.avatar && (
+                          <img
+                            src={viewingEvent.organizer.avatar}
+                            alt={viewingEvent.organizer.name}
+                            className="w-10 h-10 rounded-full"
+                          />
+                        )}
+                        <div>
+                          <p className="font-medium">{viewingEvent.organizer.name}</p>
+                          <p className="text-sm text-gray-600">
+                            {viewingEvent.organizer.events} events • {viewingEvent.organizer.rating} rating
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Venue Document */}
+                  {(viewingEvent as any).venueDocument && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Venue Documentation</h4>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <FileText className="w-6 h-6 text-blue-600" />
+                            <div>
+                              <h5 className="font-medium text-blue-900">Venue Booking Document</h5>
+                              <p className="text-sm text-blue-700">Uploaded by event organizer for verification</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => window.open((viewingEvent as any).venueDocument, '_blank')}
+                              className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span>View</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = (viewingEvent as any).venueDocument;
+                                link.download = `venue-document-${viewingEvent.id}`;
+                                link.click();
+                              }}
+                              className="flex items-center space-x-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                            >
+                              <Download className="w-4 h-4" />
+                              <span>Download</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Admin Actions */}
+                  {viewingEvent.status === 'pending' && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-gray-900 mb-3">Admin Actions</h4>
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => {
+                            handleApproveEvent(viewingEvent.id);
+                            handleCloseEventView();
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          Approve Event
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleRejectEvent(viewingEvent.id);
+                            handleCloseEventView();
+                          }}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          Reject Event
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

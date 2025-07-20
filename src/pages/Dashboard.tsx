@@ -17,29 +17,8 @@ const Dashboard: React.FC = () => {
 
   // Load events from Firebase with real-time updates
 
-  // Mock user tickets
-  const userTickets = [
-    {
-      id: '1',
-      eventTitle: 'Summer Music Festival 2024',
-      date: 'Aug 15, 2024',
-      time: '6:00 PM',
-      venue: 'Central Park, New York',
-      ticketType: 'VIP',
-      status: 'confirmed',
-      image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: '2',
-      eventTitle: 'Tech Conference 2024',
-      date: 'Sep 20, 2024',
-      time: '9:00 AM',
-      venue: 'Convention Center, San Francisco',
-      ticketType: 'General',
-      status: 'confirmed',
-      image: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg?auto=compress&cs=tinysrgb&w=400'
-    }
-  ];
+  // User tickets will come from Firebase when booking system is implemented
+  const userTickets: any[] = [];
 
   useEffect(() => {
     setLoading(true);
@@ -69,7 +48,13 @@ const Dashboard: React.FC = () => {
       const message = encodeURIComponent('Please log in to book tickets for this event');
       navigate(`/login?message=${message}`);
     } else {
-      // User is authenticated, navigate to event details page
+      // Check if user is admin - admins cannot book events
+      if (currentUser.email === 'aleemsidra2205@gmail.com') {
+        alert('Admins cannot book events. Admins are meant to manage and approve events, not book them as attendees.');
+        return;
+      }
+
+      // User is authenticated and not admin, navigate to event details page
       navigate(`/event/${event.id}`);
     }
   };

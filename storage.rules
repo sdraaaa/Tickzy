@@ -24,13 +24,12 @@ service firebase.storage {
              get(/databases/(default)/documents/users/$(request.auth.uid)).data.hostStatus == 'approved';
     }
 
-    // Helper function to check if user can create events (approved hosts and admins only)
+    // Helper function to check if user can create events (approved hosts only, not admins)
     function canCreateEvents() {
       return isAuthenticated() &&
              exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-             ((get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'host' &&
-               get(/databases/(default)/documents/users/$(request.auth.uid)).data.hostStatus == 'approved') ||
-              get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin');
+             get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'host' &&
+             get(/databases/(default)/documents/users/$(request.auth.uid)).data.hostStatus == 'approved';
     }
 
     // Helper function to validate document file

@@ -104,17 +104,16 @@ export const generateImageFilename = (originalName: string, eventId?: string): s
 /**
  * Upload event banner image to Firebase Storage
  */
-export const uploadEventBanner = (
+export const uploadEventBanner = async (
   file: File,
   eventId: string,
   onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> => {
-  return new Promise(async (resolve, reject) => {
+  try {
     // Validate file first
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      reject(new Error(validation.error));
-      return;
+      throw new Error(validation.error);
     }
 
     // Generate unique filename
@@ -155,41 +154,14 @@ export const uploadEventBanner = (
       };
 
       console.log('✅ Image upload completed:', result);
-      resolve(result);
-      return;
+      return result;
     } catch (directUploadError) {
-      console.log('⚠️ Direct upload failed, trying resumable upload:', directUploadError);
-    }
+      console.log('⚠️ Direct upload failed, falling back to error:', directUploadError);
 
-    // Fallback to resumable upload
-    const uploadTask = uploadBytesResumable(storageRef, file);
-    console.log('⬆️ Upload task created, starting resumable upload...');
+      let errorMessage = 'Upload failed. Please try again.';
 
-    // Monitor upload progress
-    uploadTask.on('state_changed', 
-      (snapshot: UploadTaskSnapshot) => {
-        const progress: UploadProgress = {
-          bytesTransferred: snapshot.bytesTransferred,
-          totalBytes: snapshot.totalBytes,
-          progress: Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
-          state: snapshot.state as any
-        };
-        
-        if (onProgress) {
-          onProgress(progress);
-        }
-      },
-      (error) => {
-        console.error('🚨 Firebase Storage Upload Error:', {
-          code: error.code,
-          message: error.message,
-          serverResponse: error.serverResponse,
-          customData: error.customData
-        });
-
-        let errorMessage = 'Upload failed. Please try again.';
-
-        switch (error.code) {
+      if (directUploadError && typeof directUploadError === 'object' && 'code' in directUploadError) {
+        switch (directUploadError.code) {
           case 'storage/unauthorized':
             errorMessage = 'You do not have permission to upload files. Please ensure you are logged in as an approved host.';
             break;
@@ -206,32 +178,16 @@ export const uploadEventBanner = (
             errorMessage = 'Upload failed after multiple retries. Please check your connection.';
             break;
           default:
-            errorMessage = `Upload failed: ${error.message || error.code || 'Unknown error'}. Please check Firebase Storage configuration.`;
-        }
-
-        reject(new Error(errorMessage));
-      },
-      async () => {
-        try {
-          // Upload completed successfully, get download URL
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          const result: UploadResult = {
-            downloadURL,
-            fullPath: uploadTask.snapshot.ref.fullPath,
-            name: filename,
-            size: file.size
-          };
-          
-          console.log('✅ Image uploaded successfully:', result);
-          resolve(result);
-        } catch (error) {
-          console.error('Error getting download URL:', error);
-          reject(new Error('Upload completed but failed to get download URL.'));
+            errorMessage = `Upload failed: ${directUploadError.message || directUploadError.code || 'Unknown error'}. Please check Firebase Storage configuration.`;
         }
       }
-    );
-  });
+
+      throw new Error(errorMessage);
+    }
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    throw error;
+  }
 };
 
 /**
@@ -333,19 +289,18 @@ export const generateDocumentFilename = (originalName: string, eventId?: string)
 /**
  * Upload venue document to Firebase Storage
  */
-export const uploadVenueDocument = (
+export const uploadVenueDocument = async (
   file: File,
   eventId: string,
   onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> => {
-  return new Promise(async (resolve, reject) => {
-    // Validate file first
-    const validation = validateDocumentFile(file);
-    if (!validation.valid) {
-      reject(new Error(validation.error));
-      return;
-    }
+  // Validate file first
+  const validation = validateDocumentFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
 
+  try {
     // Generate unique filename
     const filename = generateDocumentFilename(file.name, eventId);
     const storagePath = `events/documents/${eventId}/${filename}`;
@@ -377,43 +332,14 @@ export const uploadVenueDocument = (
       };
 
       console.log('✅ Document upload completed:', result);
-      resolve(result);
-      return;
+      return result;
     } catch (directUploadError) {
-      console.log('⚠️ Direct document upload failed, trying resumable upload:', directUploadError);
-    }
+      console.log('⚠️ Direct document upload failed:', directUploadError);
 
-    // Fallback to resumable upload
-    const uploadTask = uploadBytesResumable(storageRef, file);
+      let errorMessage = 'Document upload failed. Please try again.';
 
-    // Handle upload progress
-    uploadTask.on(
-      'state_changed',
-      (snapshot: UploadTaskSnapshot) => {
-        const progress: UploadProgress = {
-          bytesTransferred: snapshot.bytesTransferred,
-          totalBytes: snapshot.totalBytes,
-          progress: Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
-          state: snapshot.state as any
-        };
-
-        if (onProgress) {
-          onProgress(progress);
-        }
-
-        console.log(`📄 Document upload progress: ${progress.progress}%`);
-      },
-      (error) => {
-        console.error('🚨 Firebase Storage Document Upload Error:', {
-          code: error.code,
-          message: error.message,
-          serverResponse: error.serverResponse,
-          customData: error.customData
-        });
-
-        let errorMessage = 'Document upload failed. Please try again.';
-
-        switch (error.code) {
+      if (directUploadError && typeof directUploadError === 'object' && 'code' in directUploadError) {
+        switch (directUploadError.code) {
           case 'storage/unauthorized':
             errorMessage = 'You do not have permission to upload documents. Please ensure you are logged in as an approved host.';
             break;
@@ -427,32 +353,16 @@ export const uploadVenueDocument = (
             errorMessage = 'Document upload failed after multiple retries. Please check your connection.';
             break;
           default:
-            errorMessage = `Document upload failed: ${error.message || error.code || 'Unknown error'}. Please check Firebase Storage configuration.`;
-        }
-
-        reject(new Error(errorMessage));
-      },
-      async () => {
-        try {
-          // Upload completed successfully, get download URL
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-          const result: UploadResult = {
-            downloadURL,
-            fullPath: uploadTask.snapshot.ref.fullPath,
-            name: filename,
-            size: file.size
-          };
-
-          console.log('✅ Document uploaded successfully:', result);
-          resolve(result);
-        } catch (error) {
-          console.error('Error getting document download URL:', error);
-          reject(new Error('Document upload completed but failed to get download URL.'));
+            errorMessage = `Document upload failed: ${directUploadError.message || directUploadError.code || 'Unknown error'}. Please check Firebase Storage configuration.`;
         }
       }
-    );
-  });
+
+      throw new Error(errorMessage);
+    }
+  } catch (error: any) {
+    console.error('Document upload error:', error);
+    throw error;
+  }
 };
 
 /**

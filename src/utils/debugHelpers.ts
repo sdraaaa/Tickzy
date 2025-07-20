@@ -217,6 +217,9 @@ export const testAuthRedirect = () => {
   return true;
 };
 
+// Import sample events utility
+import { createSampleEvents, checkSampleEventsExist } from './seedSampleEvents';
+
 // Make functions available in browser console for debugging
 if (typeof window !== 'undefined') {
   (window as any).clearAllAppState = clearAllAppState;
@@ -226,4 +229,6 @@ if (typeof window !== 'undefined') {
   (window as any).debugAuthState = debugAuthState;
   (window as any).debugPredefinedUsers = debugPredefinedUsers;
   (window as any).testAuthRedirect = testAuthRedirect;
+  (window as any).createSampleEvents = createSampleEvents;
+  (window as any).checkSampleEventsExist = checkSampleEventsExist;
 }

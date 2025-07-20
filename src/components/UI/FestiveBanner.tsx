@@ -9,7 +9,7 @@ interface FestiveBannerProps {
 const FestiveBanner: React.FC<FestiveBannerProps> = ({
   title = "Welcome to Tickzy",
   subtitle = "Discover and host unforgettable events around you",
-  image = "/concert-banner.jpg", // Make sure this exists in /public/
+  image = "https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1200", // Default event banner image
 }) => {
   return (
     <div

@@ -13,17 +13,17 @@ const Profile: React.FC = () => {
   const user = {
     firstName: currentUser?.displayName?.split(' ')[0] || 'User',
     lastName: currentUser?.displayName?.split(' ')[1] || '',
-    email: currentUser?.email || 'user@example.com',
-    phone: '+1 (555) 123-4567',
-    location: 'New York, NY',
-    joinDate: 'March 2023',
+    email: currentUser?.email || 'No email provided',
+    phone: 'Not provided', // Will be implemented when user profile editing is added
+    location: 'Not provided', // Will be implemented when user profile editing is added
+    joinDate: currentUser?.metadata?.creationTime ? new Date(currentUser.metadata.creationTime).toLocaleDateString() : 'Unknown',
     avatar: currentUser?.photoURL || 'https://images.pexels.com/photos/3184317/pexels-photo-3184317.jpeg?auto=compress&cs=tinysrgb&w=400',
     role: userData?.role || 'user',
     stats: {
-      eventsAttended: 24,
-      eventsHosted: 3,
-      totalSpent: 1450,
-      favoriteEvents: 12,
+      eventsAttended: 0, // Will be calculated from real booking data when implemented
+      eventsHosted: 0, // Will be calculated from real event data when implemented
+      totalSpent: 0, // Will be calculated from real booking data when implemented
+      favoriteEvents: 0, // Will be calculated from real favorites data when implemented
     }
   };
 

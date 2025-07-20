@@ -140,14 +140,28 @@ const EventCard: React.FC<EventCardProps> = ({ event, showBookButton = false, sh
               <button
                 onClick={(e) => {
                   e.preventDefault();
+                  if (currentUser?.email === 'aleemsidra2205@gmail.com') {
+                    alert('Admins cannot book events. Admins are meant to manage and approve events, not book them as attendees.');
+                    return;
+                  }
                   if (onBookClick) {
                     onBookClick();
                   }
                 }}
-                className="w-full bg-primary-500 text-white py-2 px-4 rounded-xl font-medium hover:bg-primary-600 transition-colors duration-300 flex items-center justify-center"
+                disabled={currentUser?.email === 'aleemsidra2205@gmail.com'}
+                className={`w-full py-2 px-4 rounded-xl font-medium transition-colors duration-300 flex items-center justify-center ${
+                  currentUser?.email === 'aleemsidra2205@gmail.com'
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-primary-500 text-white hover:bg-primary-600'
+                }`}
               >
                 <Ticket className="w-4 h-4 mr-2" />
-                {currentUser ? 'Book Ticket' : 'Login to Book'}
+                {currentUser?.email === 'aleemsidra2205@gmail.com'
+                  ? 'Admin - Cannot Book'
+                  : currentUser
+                    ? 'Book Ticket'
+                    : 'Login to Book'
+                }
               </button>
             </div>
           )}
