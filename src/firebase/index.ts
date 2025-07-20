@@ -1,12 +1,13 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyALIVaf8gwwzKOkCfEUBlMxgeDBW8sUicU",
   authDomain: "tickzy-e986b.firebaseapp.com",
   projectId: "tickzy-e986b",
-  storageBucket: "tickzy-e986b.appspot.com",
+  storageBucket: "tickzy-e986b.firebasestorage.app",
   messagingSenderId: "304409562549",
   appId: "1:304409562549:web:19b4c2d6210e12d56b9dfc",
   measurementId: "G-R6XHGNT5D5"
@@ -15,6 +16,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Debug Firebase Storage configuration
+console.log('🔧 Firebase Storage Configuration:', {
+  storageBucket: firebaseConfig.storageBucket,
+  storageApp: storage.app.name,
+  storageOptions: storage.app.options
+});
 
 // Configure Firebase Auth persistence (should be enabled by default, but let's be explicit)
 // This ensures authentication state persists across browser sessions
@@ -97,4 +106,4 @@ export const clearAllAuthenticationState = async () => {
 // Legacy function for backward compatibility
 export const forceLogout = clearAllAuthenticationState;
 
-export { auth, db, googleProvider };
+export { auth, db, storage, googleProvider };

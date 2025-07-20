@@ -9,15 +9,26 @@
     "build:netlify": "vite build",
     "build:github": "GITHUB_PAGES=true vite build",
     "deploy:github": "node scripts/deploy-github.js",
+    "deploy:firestore": "node scripts/deploy-firestore-indexes.js",
+    "deploy:firestore:indexes": "npx firebase-tools deploy --only firestore:indexes --project tickzy-e986b",
+    "deploy:firestore:rules": "npx firebase-tools deploy --only firestore:rules --project tickzy-e986b",
+    "deploy:firestore:all": "npx firebase-tools deploy --only firestore --project tickzy-e986b",
+    "firebase:login": "npx firebase-tools login",
+    "firebase:projects": "npx firebase-tools projects:list",
+    "firebase:indexes:status": "npx firebase-tools firestore:indexes --project tickzy-e986b",
+    "setup:firebase": "npm run firebase:login && npm run deploy:firestore",
     "lint": "eslint .",
     "preview": "vite preview",
     "preview:github": "GITHUB_PAGES=true vite build && vite preview --base=/Tickzy/"
   },
   "dependencies": {
+    "@types/leaflet": "^1.9.20",
     "firebase": "^11.10.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^6.8.0"
   },
   "devDependencies": {

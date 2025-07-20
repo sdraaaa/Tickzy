@@ -20,54 +20,9 @@ const UserDashboard: React.FC = () => {
   const [hostRequestLoading, setHostRequestLoading] = useState(false);
   const [hostRequestDate, setHostRequestDate] = useState<any>(null);
 
-  // Mock user tickets
-  const upcomingEvents = [
-    {
-      id: '1',
-      title: 'Summer Music Festival 2024',
-      date: 'Aug 15, 2024',
-      time: '6:00 PM',
-      location: 'Central Park, New York',
-      ticketType: 'VIP',
-      status: 'confirmed',
-      image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: '2',
-      title: 'Tech Conference 2024',
-      date: 'Sep 20, 2024',
-      time: '9:00 AM',
-      location: 'Convention Center, San Francisco',
-      ticketType: 'General',
-      status: 'confirmed',
-      image: 'https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg?auto=compress&cs=tinysrgb&w=400'
-    }
-  ];
-
-  const myTickets = [
-    {
-      id: '1',
-      eventTitle: 'Summer Music Festival 2024',
-      date: 'Aug 15, 2024',
-      time: '6:00 PM',
-      venue: 'Central Park, New York',
-      ticketType: 'VIP',
-      qrCode: 'QR123456',
-      status: 'active',
-      image: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400'
-    },
-    {
-      id: '2',
-      eventTitle: 'Food & Wine Tasting',
-      date: 'Aug 25, 2024',
-      time: '7:00 PM',
-      venue: 'Downtown Restaurant, Chicago',
-      ticketType: 'General',
-      qrCode: 'QR789012',
-      status: 'active',
-      image: 'https://images.pexels.com/photos/1581384/pexels-photo-1581384.jpeg?auto=compress&cs=tinysrgb&w=400'
-    }
-  ];
+  // User tickets state (will be loaded from Firebase in future)
+  const upcomingEvents: any[] = []; // TODO: Load from Firebase
+  const myTickets: any[] = []; // TODO: Load from Firebase
 
   // Load recommended events from Firebase
   useEffect(() => {

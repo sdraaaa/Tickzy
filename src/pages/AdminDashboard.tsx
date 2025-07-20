@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter, LogOut, UserCircle, Settings, UserCheck, UserX, Clock } from 'lucide-react';
+import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Trash2, MoreHorizontal, Search, Filter, LogOut, UserCircle, Settings, UserCheck, UserX, Clock, FileText, AlertCircle, Check, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToPendingHostRequests, subscribeToAllHostRequests, approveHostRequest, rejectHostRequest, HostRequest } from '@/services/hostService';
-import { subscribeToEvents, Event } from '@/services/eventsService';
+import { subscribeToAllEvents, subscribeToPendingEvents, Event } from '@/services/eventsService';
+import { subscribeToEventApprovalStats, approveEvent, rejectEvent, bulkApproveEvents, bulkRejectEvents, EventApprovalStats } from '@/services/adminService';
+import { useNotifications, createEventNotifications } from '@/components/Notifications/NotificationSystem';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [searchTerm, setSearchTerm] = useState('');
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const navigate = useNavigate();
-  const { logout, currentUser } = useAuth();
+  const { logout, currentUser, userData } = useAuth();
+  const { addNotification } = useNotifications();
 
   // State for host requests
   const [pendingHostRequests, setPendingHostRequests] = useState<HostRequest[]>([]);
@@ -18,6 +21,18 @@ const AdminDashboard: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // State for event management
+  const [pendingEvents, setPendingEvents] = useState<Event[]>([]);
+  const [eventStats, setEventStats] = useState<EventApprovalStats>({
+    totalEvents: 0,
+    pendingEvents: 0,
+    approvedEvents: 0,
+    rejectedEvents: 0,
+    cancelledEvents: 0
+  });
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+  const [processingEvents, setProcessingEvents] = useState<string[]>([]);
 
   // Subscribe to host requests and events
   useEffect(() => {
@@ -35,16 +50,28 @@ const AdminDashboard: React.FC = () => {
       setAllHostRequests(requests);
     });
 
-    // Subscribe to events
-    const unsubscribeEvents = subscribeToEvents((fetchedEvents) => {
+    // Subscribe to all events
+    const unsubscribeEvents = subscribeToAllEvents((fetchedEvents) => {
       setEvents(fetchedEvents);
       setLoading(false);
+    });
+
+    // Subscribe to pending events
+    const unsubscribePendingEvents = subscribeToPendingEvents((fetchedPendingEvents) => {
+      setPendingEvents(fetchedPendingEvents);
+    });
+
+    // Subscribe to event approval stats
+    const unsubscribeEventStats = subscribeToEventApprovalStats((stats) => {
+      setEventStats(stats);
     });
 
     return () => {
       if (unsubscribePending) unsubscribePending();
       if (unsubscribeAll) unsubscribeAll();
       if (unsubscribeEvents) unsubscribeEvents();
+      if (unsubscribePendingEvents) unsubscribePendingEvents();
+      if (unsubscribeEventStats) unsubscribeEventStats();
     };
   }, [currentUser]);
 
@@ -75,6 +102,133 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Event approval functions
+  const handleApproveEvent = async (eventId: string) => {
+    if (!currentUser) return;
+
+    const event = pendingEvents.find(e => e.id === eventId);
+    const eventTitle = event?.title || 'Unknown Event';
+
+    setProcessingEvents(prev => [...prev, eventId]);
+    try {
+      await approveEvent(eventId, currentUser.uid);
+      addNotification(createEventNotifications.eventApproved(eventTitle));
+      console.log(`✅ Event ${eventId} approved successfully`);
+    } catch (error: any) {
+      console.error('Error approving event:', error);
+      addNotification({
+        type: 'error',
+        title: 'Approval Failed',
+        message: error.message || 'Failed to approve event. Please try again.',
+        duration: 7000
+      });
+    } finally {
+      setProcessingEvents(prev => prev.filter(id => id !== eventId));
+    }
+  };
+
+  const handleRejectEvent = async (eventId: string) => {
+    if (!currentUser) return;
+
+    const event = pendingEvents.find(e => e.id === eventId);
+    const eventTitle = event?.title || 'Unknown Event';
+    const reason = prompt('Please provide a reason for rejection (optional):');
+
+    setProcessingEvents(prev => [...prev, eventId]);
+    try {
+      await rejectEvent(eventId, currentUser.uid, reason || undefined);
+      addNotification(createEventNotifications.eventRejected(eventTitle, reason || undefined));
+      console.log(`❌ Event ${eventId} rejected successfully`);
+    } catch (error: any) {
+      console.error('Error rejecting event:', error);
+      addNotification({
+        type: 'error',
+        title: 'Rejection Failed',
+        message: error.message || 'Failed to reject event. Please try again.',
+        duration: 7000
+      });
+    } finally {
+      setProcessingEvents(prev => prev.filter(id => id !== eventId));
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (!currentUser || selectedEvents.length === 0) return;
+
+    if (!confirm(`Are you sure you want to approve ${selectedEvents.length} events?`)) {
+      return;
+    }
+
+    setProcessingEvents(prev => [...prev, ...selectedEvents]);
+    try {
+      const result = await bulkApproveEvents(selectedEvents, currentUser.uid);
+      console.log(`✅ Bulk approval complete: ${result.successful.length} successful, ${result.failed.length} failed`);
+
+      if (result.failed.length > 0) {
+        addNotification(createEventNotifications.bulkApprovalPartial(result.successful.length, result.failed.length));
+      } else {
+        addNotification(createEventNotifications.bulkApprovalSuccess(result.successful.length));
+      }
+
+      setSelectedEvents([]);
+    } catch (error: any) {
+      console.error('Error in bulk approval:', error);
+      addNotification({
+        type: 'error',
+        title: 'Bulk Approval Failed',
+        message: 'Failed to approve events. Please try again.',
+        duration: 7000
+      });
+    } finally {
+      setProcessingEvents(prev => prev.filter(id => !selectedEvents.includes(id)));
+    }
+  };
+
+  const handleBulkReject = async () => {
+    if (!currentUser || selectedEvents.length === 0) return;
+
+    const reason = prompt('Please provide a reason for rejection (optional):');
+
+    if (!confirm(`Are you sure you want to reject ${selectedEvents.length} events?`)) {
+      return;
+    }
+
+    setProcessingEvents(prev => [...prev, ...selectedEvents]);
+    try {
+      const result = await bulkRejectEvents(selectedEvents, currentUser.uid, reason || undefined);
+      console.log(`❌ Bulk rejection complete: ${result.successful.length} successful, ${result.failed.length} failed`);
+
+      if (result.failed.length > 0) {
+        alert(`${result.successful.length} events rejected successfully. ${result.failed.length} events failed to reject.`);
+      } else {
+        alert(`All ${result.successful.length} events rejected successfully!`);
+      }
+
+      setSelectedEvents([]);
+    } catch (error: any) {
+      console.error('Error in bulk rejection:', error);
+      alert('Failed to reject events. Please try again.');
+    } finally {
+      setProcessingEvents(prev => prev.filter(id => !selectedEvents.includes(id)));
+    }
+  };
+
+  const toggleEventSelection = (eventId: string) => {
+    setSelectedEvents(prev =>
+      prev.includes(eventId)
+        ? prev.filter(id => id !== eventId)
+        : [...prev, eventId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedEvents.length === pendingEvents.length) {
+      setSelectedEvents([]);
+    } else {
+      setSelectedEvents(pendingEvents.map(event => event.id));
+    }
+  };
+
   const handleRejectHostRequest = async (userId: string) => {
     if (!currentUser) return;
 
@@ -98,12 +252,17 @@ const AdminDashboard: React.FC = () => {
   const stats = {
     totalUsers: allHostRequests.length + 100, // Approximate total users
     pendingHostRequests: pendingHostRequests.length,
-    totalEvents: events.length,
+    totalEvents: eventStats.totalEvents,
+    pendingEvents: eventStats.pendingEvents,
+    approvedEvents: eventStats.approvedEvents,
     approvedHosts: allHostRequests.filter(req => req.hostStatus === 'approved').length,
     monthlyRevenue: events.reduce((total, event) => {
-      // Calculate revenue from events (assuming some basic pricing logic)
-      const eventRevenue = (event.price || 0) * (event.attendees?.length || 0);
-      return total + eventRevenue;
+      // Calculate revenue from approved events only
+      if (event.status === 'approved') {
+        const eventRevenue = (event.price || 0) * (event.attendees || 0);
+        return total + eventRevenue;
+      }
+      return total;
     }, 0)
   };
 
@@ -137,31 +296,6 @@ const AdminDashboard: React.FC = () => {
       status: 'Suspended',
       eventsAttended: 3,
       totalSpent: 150
-    }
-  ];
-
-  const pendingEvents = [
-    {
-      id: '1',
-      title: 'Summer Music Festival 2024',
-      organizer: 'EventPro Productions',
-      date: '2024-08-15',
-      category: 'Music',
-      ticketPrice: 89,
-      expectedAttendees: 1000,
-      status: 'Pending Review',
-      submittedDate: '2024-07-01'
-    },
-    {
-      id: '2',
-      title: 'Tech Innovation Summit',
-      organizer: 'TechCorp Events',
-      date: '2024-09-20',
-      category: 'Technology',
-      ticketPrice: 299,
-      expectedAttendees: 500,
-      status: 'Under Review',
-      submittedDate: '2024-07-05'
     }
   ];
 
@@ -208,7 +342,8 @@ const AdminDashboard: React.FC = () => {
   const tabs = [
     { id: 'users', name: 'Manage Users', icon: Users },
     { id: 'host-requests', name: 'Host Requests', icon: UserCheck, badge: pendingHostRequests.length },
-    { id: 'events', name: 'Manage Events', icon: CheckCircle },
+    { id: 'events', name: 'Manage Events', icon: Calendar, badge: eventStats.totalEvents },
+    { id: 'event-approvals', name: 'Event Approvals', icon: FileText, badge: eventStats.pendingEvents },
     { id: 'refunds', name: 'Refund Requests', icon: AlertTriangle }
   ];
 
@@ -319,6 +454,26 @@ const AdminDashboard: React.FC = () => {
                   <div className="ml-3">
                     <p className="text-lg font-bold text-gray-900">{stats.totalEvents}</p>
                     <p className="text-sm text-gray-600">Total Events</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-orange-50 p-4 rounded-xl">
+                <div className="flex items-center">
+                  <Clock className="w-8 h-8 text-orange-500" />
+                  <div className="ml-3">
+                    <p className="text-lg font-bold text-gray-900">{stats.pendingEvents}</p>
+                    <p className="text-sm text-gray-600">Pending Events</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 p-4 rounded-xl">
+                <div className="flex items-center">
+                  <CheckCircle className="w-8 h-8 text-emerald-500" />
+                  <div className="ml-3">
+                    <p className="text-lg font-bold text-gray-900">{stats.approvedEvents}</p>
+                    <p className="text-sm text-gray-600">Approved Events</p>
                   </div>
                 </div>
               </div>
@@ -602,6 +757,147 @@ const AdminDashboard: React.FC = () => {
                       )}
                     </div>
                   </>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'event-approvals' && (
+              <div>
+                <div className="p-6 border-b border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">Event Approvals</h2>
+                      <p className="text-gray-600 mt-1">Review and approve pending events</p>
+                    </div>
+                    {selectedEvents.length > 0 && (
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={handleBulkApprove}
+                          disabled={processingEvents.length > 0}
+                          className="btn-primary flex items-center disabled:opacity-50"
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Approve Selected ({selectedEvents.length})
+                        </button>
+                        <button
+                          onClick={handleBulkReject}
+                          disabled={processingEvents.length > 0}
+                          className="btn-secondary flex items-center disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Reject Selected ({selectedEvents.length})
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {pendingEvents.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Events</h3>
+                    <p className="text-gray-600">All events have been reviewed. Great job!</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left py-4 px-6">
+                            <input
+                              type="checkbox"
+                              checked={selectedEvents.length === pendingEvents.length && pendingEvents.length > 0}
+                              onChange={toggleSelectAll}
+                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            />
+                          </th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">Event</th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">Host</th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">Date</th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">Category</th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">Price</th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">Submitted</th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {pendingEvents.map((event) => (
+                          <tr key={event.id} className="hover:bg-gray-50">
+                            <td className="py-4 px-6">
+                              <input
+                                type="checkbox"
+                                checked={selectedEvents.includes(event.id)}
+                                onChange={() => toggleEventSelection(event.id)}
+                                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              />
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center">
+                                <img
+                                  src={event.image}
+                                  alt={event.title}
+                                  className="w-12 h-12 rounded-lg object-cover mr-3"
+                                  onError={(e) => {
+                                    e.currentTarget.src = 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400';
+                                  }}
+                                />
+                                <div>
+                                  <p className="font-medium text-gray-900">{event.title}</p>
+                                  <p className="text-sm text-gray-600">{event.location}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-gray-600">{event.organizer?.name || 'Unknown'}</td>
+                            <td className="py-4 px-6 text-gray-600">{event.date} • {event.time}</td>
+                            <td className="py-4 px-6">
+                              <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
+                                {event.category}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-gray-600">${event.price}</td>
+                            <td className="py-4 px-6 text-gray-600">
+                              {new Date(event.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleApproveEvent(event.id)}
+                                  disabled={processingEvents.includes(event.id)}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Approve Event"
+                                >
+                                  {processingEvents.includes(event.id) ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                                  ) : (
+                                    <Check className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handleRejectEvent(event.id)}
+                                  disabled={processingEvents.includes(event.id)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Reject Event"
+                                >
+                                  {processingEvents.includes(event.id) ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                  ) : (
+                                    <X className="w-4 h-4" />
+                                  )}
+                                </button>
+                                <Link
+                                  to={`/event/${event.id}`}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="View Event Details"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}

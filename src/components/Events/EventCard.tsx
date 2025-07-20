@@ -2,26 +2,17 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Users, Star, Ticket, ImageIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Event } from '@/services/eventsService';
+import EventStatusBadge, { EventStatus } from './EventStatusBadge';
 
 interface EventCardProps {
-  event: {
-    id: string;
-    title: string;
-    image: string;
-    date: string;
-    time: string;
-    location: string;
-    price: number;
-    category: string;
-    attendees: number;
-    rating: number;
-    isPopular?: boolean;
-  };
+  event: Event;
   showBookButton?: boolean;
+  showStatus?: boolean;
   onBookClick?: () => void;
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, showBookButton = false, onBookClick }) => {
+const EventCard: React.FC<EventCardProps> = ({ event, showBookButton = false, showStatus = false, onBookClick }) => {
   const { currentUser } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -87,12 +78,20 @@ const EventCard: React.FC<EventCardProps> = ({ event, showBookButton = false, on
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         
-        {/* Popular Badge */}
-        {event.isPopular && (
-          <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium">
-            🔥 Popular
-          </div>
-        )}
+        {/* Status and Popular Badges */}
+        <div className="absolute top-4 left-4 flex flex-col space-y-2">
+          {showStatus && event.status && (
+            <EventStatusBadge
+              status={event.status as EventStatus}
+              size="sm"
+            />
+          )}
+          {event.isPopular && (
+            <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+              🔥 Popular
+            </div>
+          )}
+        </div>
         
         {/* Category */}
         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-gray-800 px-3 py-1 rounded-full text-xs font-medium">

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { getDomainInfo } from './utils/environmentHelper';
+import { NotificationProvider } from './components/Notifications/NotificationSystem';
 import Layout from './components/Layout/Layout';
 import LandingPage from './pages/LandingPage';
 import DashboardRedirect from './pages/DashboardRedirect';
@@ -15,6 +16,7 @@ import HostDashboard from './pages/HostDashboard';
 import CreateEvent from './pages/CreateEvent';
 import BookingConfirmation from './pages/BookingConfirmation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import HostProtectedRoute from './components/Auth/HostProtectedRoute';
 
 
 function App() {
@@ -23,11 +25,12 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router
-        basename={basePath === '/' ? undefined : basePath.slice(0, -1)} // Remove trailing slash for basename
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        <div className="min-h-screen bg-gray-50">
+      <NotificationProvider>
+        <Router
+          basename={basePath === '/' ? undefined : basePath.slice(0, -1)} // Remove trailing slash for basename
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <div className="min-h-screen bg-gray-50">
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
@@ -57,11 +60,21 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/user-dashboard" element={<UserDashboard />} />
               <Route path="/host-dashboard" element={<HostDashboard />} />
-              <Route path="/host/create" element={<CreateEvent />} />
+              <Route path="/host/create" element={
+                <HostProtectedRoute>
+                  <CreateEvent />
+                </HostProtectedRoute>
+              } />
+              <Route path="/create-event" element={
+                <HostProtectedRoute>
+                  <CreateEvent />
+                </HostProtectedRoute>
+              } />
             </Route>
           </Routes>
-        </div>
-      </Router>
+          </div>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

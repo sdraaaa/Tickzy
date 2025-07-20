@@ -15,6 +15,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '@/firebase';
+import { isIndexError, logIndexInstructions, markIndexIssues } from '@/utils/firestoreIndexHelper';
 
 export interface Event {
   id: string;
@@ -22,7 +23,9 @@ export interface Event {
   image: string;
   date: string;
   time: string;
-  location: string;
+  location: string; // Human-readable address (for backward compatibility)
+  locationName?: string; // Human-readable address (new field)
+  locationCoords?: { latitude: number; longitude: number }; // Coordinates (new field)
   price: number;
   category: string;
   attendees: number;
@@ -33,7 +36,12 @@ export interface Event {
   organizer: Organizer;
   createdAt: string; // Always convert to string for React rendering
   createdBy: string;
+  status?: 'pending' | 'approved' | 'rejected' | 'cancelled'; // Event approval status
   isPopular?: boolean;
+  venueDocument?: string; // Firebase Storage URL for venue booking document
+  rejectionReason?: string; // Reason for rejection (admin only)
+  statusUpdatedAt?: any; // Timestamp when status was last updated
+  statusUpdatedBy?: string; // Admin ID who updated the status
 }
 
 export interface TicketType {
@@ -99,64 +107,116 @@ const convertFirebaseEvent = (doc: any): Event => {
     organizer: data.organizer || { name: 'Unknown', rating: 0, events: 0, avatar: '' },
     createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
     createdBy: safeStringify(data.createdBy) || '',
+    status: data.status || 'pending', // Default to pending if not set
     isPopular: Boolean(data.isPopular)
   };
 };
 
-// Get all events with real-time updates
+// Get all APPROVED events with real-time updates (for public areas)
 export const subscribeToEvents = (callback: (events: Event[]) => void, category?: string) => {
-  let q = query(collection(db, EVENTS_COLLECTION), orderBy('createdAt', 'desc'));
-  
-  if (category && category !== 'all') {
-    q = query(collection(db, EVENTS_COLLECTION), 
-      where('category', '==', category), 
+  try {
+    let q = query(
+      collection(db, EVENTS_COLLECTION),
+      where('status', '==', 'approved'),
       orderBy('createdAt', 'desc')
     );
-  }
 
-  return onSnapshot(q, (snapshot) => {
-    const events: Event[] = [];
-    snapshot.forEach((doc) => {
-      events.push(convertFirebaseEvent(doc));
+    if (category && category !== 'all') {
+      q = query(
+        collection(db, EVENTS_COLLECTION),
+        where('status', '==', 'approved'),
+        where('category', '==', category),
+        orderBy('createdAt', 'desc')
+      );
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const events: Event[] = [];
+      snapshot.forEach((doc) => {
+        const event = convertFirebaseEvent(doc);
+        if (event) {
+          events.push(event);
+        }
+      });
+      callback(events);
+    }, (error) => {
+      console.error('Error fetching approved events:', error);
+
+      if (isIndexError(error)) {
+        markIndexIssues();
+        logIndexInstructions(error);
+      }
+
+      callback([]);
     });
-    callback(events);
-  }, (error) => {
-    console.error('Error fetching events:', error);
+  } catch (error) {
+    console.error('Error setting up events subscription:', error);
     callback([]);
-  });
+    return () => {}; // Return empty unsubscribe function
+  }
 };
 
-// Get events with pagination
+// Get APPROVED events with pagination (for public areas)
 export const subscribeToEventsWithLimit = (
-  callback: (events: Event[]) => void, 
+  callback: (events: Event[]) => void,
   limitCount: number = 10,
   category?: string
 ) => {
-  let q = query(
-    collection(db, EVENTS_COLLECTION), 
-    orderBy('createdAt', 'desc'),
-    limit(limitCount)
-  );
-  
-  if (category && category !== 'all') {
-    q = query(
-      collection(db, EVENTS_COLLECTION), 
-      where('category', '==', category), 
+  try {
+    let q = query(
+      collection(db, EVENTS_COLLECTION),
+      where('status', '==', 'approved'),
       orderBy('createdAt', 'desc'),
       limit(limitCount)
     );
-  }
 
-  return onSnapshot(q, (snapshot) => {
-    const events: Event[] = [];
-    snapshot.forEach((doc) => {
-      events.push(convertFirebaseEvent(doc));
+    if (category && category !== 'all') {
+      q = query(
+        collection(db, EVENTS_COLLECTION),
+        where('status', '==', 'approved'),
+        where('category', '==', category),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      );
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const events: Event[] = [];
+      snapshot.forEach((doc) => {
+        const event = convertFirebaseEvent(doc);
+        if (event) {
+          events.push(event);
+        }
+      });
+      callback(events);
+    }, (error) => {
+      console.error('Error fetching approved events with limit:', error);
+
+      if (error.code === 'failed-precondition' && error.message.includes('index')) {
+        console.error('🔥 FIRESTORE INDEX REQUIRED - Using fallback query');
+        // Fallback: Get all events and filter client-side (temporary solution)
+        const fallbackQuery = query(collection(db, EVENTS_COLLECTION), limit(limitCount));
+        return onSnapshot(fallbackQuery, (snapshot) => {
+          const events: Event[] = [];
+          snapshot.forEach((doc) => {
+            const event = convertFirebaseEvent(doc);
+            if (event && event.status === 'approved') {
+              events.push(event);
+            }
+          });
+          // Sort by createdAt client-side
+          events.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          callback(events.slice(0, limitCount));
+        });
+      }
+
+      callback([]);
     });
-    callback(events);
-  }, (error) => {
-    console.error('Error fetching events with limit:', error);
+  } catch (error) {
+    console.error('Error setting up events subscription with limit:', error);
     callback([]);
-  });
+    return () => {}; // Return empty unsubscribe function
+  }
 };
 
 // Get single event by ID
@@ -190,14 +250,57 @@ export const subscribeToEvent = (eventId: string, callback: (event: Event | null
 // Create new event (for hosts)
 export const createEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>): Promise<string | null> => {
   try {
-    const docRef = await addDoc(collection(db, EVENTS_COLLECTION), {
+    // Validate required fields
+    if (!eventData.title?.trim()) {
+      throw new Error('Event title is required');
+    }
+    if (!eventData.description?.trim()) {
+      throw new Error('Event description is required');
+    }
+    if (!eventData.location?.trim()) {
+      throw new Error('Event location is required');
+    }
+    if (!eventData.date) {
+      throw new Error('Event date is required');
+    }
+    if (!eventData.time) {
+      throw new Error('Event time is required');
+    }
+    if (!eventData.image?.trim()) {
+      throw new Error('Event image URL is required');
+    }
+    if (!eventData.createdBy) {
+      throw new Error('Event creator ID is required');
+    }
+
+    // Prepare event data with defaults
+    const eventToCreate = {
       ...eventData,
+      status: eventData.status || 'pending', // Default to pending approval
+      rating: eventData.rating || 4.5,
+      isPopular: eventData.isPopular || false,
       createdAt: serverTimestamp()
-    });
+    };
+
+    console.log('Creating event in Firestore:', eventToCreate);
+
+    const docRef = await addDoc(collection(db, EVENTS_COLLECTION), eventToCreate);
+
+    console.log('Event created successfully with ID:', docRef.id);
     return docRef.id;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating event:', error);
-    return null;
+
+    // Re-throw the error so it can be handled by the calling component
+    if (error.code === 'permission-denied') {
+      throw new Error('You do not have permission to create events. Please ensure you are an approved host.');
+    } else if (error.code === 'network-request-failed') {
+      throw new Error('Network error. Please check your internet connection and try again.');
+    } else if (error.message) {
+      throw error; // Re-throw custom validation errors
+    } else {
+      throw new Error('Failed to create event. Please try again.');
+    }
   }
 };
 
@@ -221,6 +324,58 @@ export const deleteEvent = async (eventId: string): Promise<boolean> => {
     console.error('Error deleting event:', error);
     return false;
   }
+};
+
+// Get events by host ID
+export const getEventsByHost = async (hostId: string): Promise<Event[]> => {
+  try {
+    const q = query(
+      collection(db, EVENTS_COLLECTION),
+      where('createdBy', '==', hostId),
+      orderBy('createdAt', 'desc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    const events: Event[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const event = convertFirestoreEvent(doc);
+      if (event) {
+        events.push(event);
+      }
+    });
+
+    return events;
+  } catch (error) {
+    console.error('Error fetching host events:', error);
+    return [];
+  }
+};
+
+// Subscribe to events by host ID (real-time updates) - Shows ALL host events regardless of status
+export const subscribeToHostEvents = (
+  hostId: string,
+  callback: (events: Event[]) => void
+) => {
+  const q = query(
+    collection(db, EVENTS_COLLECTION),
+    where('createdBy', '==', hostId),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const events: Event[] = [];
+    snapshot.forEach((doc) => {
+      const event = convertFirebaseEvent(doc);
+      if (event) {
+        events.push(event);
+      }
+    });
+    callback(events);
+  }, (error) => {
+    console.error('Error subscribing to host events:', error);
+    callback([]);
+  });
 };
 
 // Get events by category
@@ -263,10 +418,11 @@ export const subscribeToUserEvents = (userId: string, callback: (events: Event[]
   });
 };
 
-// Get popular events (high rating or high attendees)
+// Get popular APPROVED events (high rating or high attendees)
 export const subscribeToPopularEvents = (callback: (events: Event[]) => void, limitCount: number = 6) => {
   const q = query(
-    collection(db, EVENTS_COLLECTION), 
+    collection(db, EVENTS_COLLECTION),
+    where('status', '==', 'approved'),
     where('rating', '>=', 4.5),
     orderBy('rating', 'desc'),
     orderBy('createdAt', 'desc'),
@@ -277,12 +433,157 @@ export const subscribeToPopularEvents = (callback: (events: Event[]) => void, li
     const events: Event[] = [];
     snapshot.forEach((doc) => {
       const eventData = convertFirebaseEvent(doc);
-      eventData.isPopular = true;
-      events.push(eventData);
+      if (eventData) {
+        eventData.isPopular = true;
+        events.push(eventData);
+      }
     });
     callback(events);
   }, (error) => {
-    console.error('Error fetching popular events:', error);
+    console.error('Error fetching popular approved events:', error);
     callback([]);
   });
+};
+
+// ===== ADMIN FUNCTIONS =====
+
+// Subscribe to ALL events (for admin dashboard)
+export const subscribeToAllEvents = (callback: (events: Event[]) => void) => {
+  const q = query(
+    collection(db, EVENTS_COLLECTION),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const events: Event[] = [];
+    snapshot.forEach((doc) => {
+      const event = convertFirebaseEvent(doc);
+      if (event) {
+        events.push(event);
+      }
+    });
+    callback(events);
+  }, (error) => {
+    console.error('Error subscribing to all events:', error);
+    callback([]);
+  });
+};
+
+// Subscribe to PENDING events (for admin approval queue)
+export const subscribeToPendingEvents = (callback: (events: Event[]) => void) => {
+  const q = query(
+    collection(db, EVENTS_COLLECTION),
+    where('status', '==', 'pending'),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const events: Event[] = [];
+    snapshot.forEach((doc) => {
+      const event = convertFirebaseEvent(doc);
+      if (event) {
+        events.push(event);
+      }
+    });
+    callback(events);
+  }, (error) => {
+    console.error('Error subscribing to pending events:', error);
+    callback([]);
+  });
+};
+
+// Subscribe to events by status (for admin filtering)
+export const subscribeToEventsByStatus = (
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled',
+  callback: (events: Event[]) => void
+) => {
+  const q = query(
+    collection(db, EVENTS_COLLECTION),
+    where('status', '==', status),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const events: Event[] = [];
+    snapshot.forEach((doc) => {
+      const event = convertFirebaseEvent(doc);
+      if (event) {
+        events.push(event);
+      }
+    });
+    callback(events);
+  }, (error) => {
+    console.error(`Error subscribing to ${status} events:`, error);
+    callback([]);
+  });
+};
+
+// Update event status (admin only)
+export const updateEventStatus = async (
+  eventId: string,
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled',
+  adminId: string
+): Promise<boolean> => {
+  try {
+    await updateDoc(doc(db, EVENTS_COLLECTION, eventId), {
+      status,
+      statusUpdatedAt: serverTimestamp(),
+      statusUpdatedBy: adminId
+    });
+
+    console.log(`Event ${eventId} status updated to ${status} by admin ${adminId}`);
+    return true;
+  } catch (error: any) {
+    console.error('Error updating event status:', error);
+
+    if (error.code === 'permission-denied') {
+      throw new Error('You do not have permission to update event status. Only admins can approve/reject events.');
+    } else if (error.code === 'not-found') {
+      throw new Error('Event not found.');
+    } else {
+      throw new Error('Failed to update event status. Please try again.');
+    }
+  }
+};
+
+// Bulk approve events (admin only)
+export const bulkApproveEvents = async (eventIds: string[], adminId: string): Promise<{
+  successful: string[];
+  failed: string[];
+}> => {
+  const successful: string[] = [];
+  const failed: string[] = [];
+
+  for (const eventId of eventIds) {
+    try {
+      await updateEventStatus(eventId, 'approved', adminId);
+      successful.push(eventId);
+    } catch (error) {
+      console.error(`Failed to approve event ${eventId}:`, error);
+      failed.push(eventId);
+    }
+  }
+
+  return { successful, failed };
+};
+
+// Bulk reject events (admin only)
+export const bulkRejectEvents = async (eventIds: string[], adminId: string): Promise<{
+  successful: string[];
+  failed: string[];
+}> => {
+  const successful: string[] = [];
+  const failed: string[] = [];
+
+  for (const eventId of eventIds) {
+    try {
+      await updateEventStatus(eventId, 'rejected', adminId);
+      successful.push(eventId);
+    } catch (error) {
+      console.error(`Failed to reject event ${eventId}:`, error);
+      failed.push(eventId);
+    }
+  }
+
+  return { successful, failed };
 };

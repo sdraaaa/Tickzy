@@ -1,596 +1,431 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, DollarSign, Users, Clock, Image as ImageIcon, Save, Eye, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { canUserCreateEvents } from '@/services/hostService';
 import { createEvent, TicketType } from '@/services/eventsService';
+import ImageUploadField from '@/components/UI/ImageUploadField';
+import DocumentUploadField from '@/components/UI/DocumentUploadField';
 
 const CreateEvent: React.FC = () => {
+  console.log('CreateEvent component is rendering!');
+
   const navigate = useNavigate();
   const { currentUser, userData } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [canCreate, setCanCreate] = useState(false);
+
+  // Debug user authentication and role
+  console.log('🔍 User Authentication Debug:', {
+    isAuthenticated: !!currentUser,
+    userId: currentUser?.uid,
+    userEmail: currentUser?.email,
+    userData: userData,
+    userRole: userData?.role,
+    hostStatus: userData?.hostStatus
+  });
+  const [tempEventId] = useState(() => `temp_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'Music',
+    category: '',
     date: '',
     time: '',
     location: '',
-    price: 0,
-    attendees: 100,
+    price: '',
+    attendees: '',
     image: '',
+    venueDocument: '',
     highlights: [''],
     ticketTypes: [
-      { id: 1, name: 'General Admission', price: 0, description: 'Standard event access' }
+      { id: 1, name: 'General Admission', price: 0, description: '' }
     ] as TicketType[]
   });
 
-  const categories = [
-    'Music', 'Business', 'Lifestyle', 'Arts', 'Gaming', 'Sports'
-  ];
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-  // Check if user can create events
-  useEffect(() => {
-    const checkPermissions = async () => {
-      if (!currentUser) {
-        navigate('/login');
-        return;
-      }
+  const handleImageChange = (imageUrl: string) => {
+    setFormData(prev => ({ ...prev, image: imageUrl }));
+  };
 
-      try {
-        const canCreateEvents = await canUserCreateEvents(currentUser.uid);
-        setCanCreate(canCreateEvents);
+  const handleDocumentChange = (documentUrl: string) => {
+    setFormData(prev => ({ ...prev, venueDocument: documentUrl }));
+  };
 
-        if (!canCreateEvents) {
-          navigate('/user-dashboard');
-        }
-      } catch (error) {
-        console.error('Error checking permissions:', error);
-        navigate('/user-dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkPermissions();
-  }, [currentUser, navigate]);
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (!formData.date) newErrors.date = 'Date is required';
-    if (!formData.time) newErrors.time = 'Time is required';
-    if (!formData.location.trim()) newErrors.location = 'Location is required';
-    if (formData.price < 0) newErrors.price = 'Price cannot be negative';
-    if (formData.attendees < 1) newErrors.attendees = 'Capacity must be at least 1';
-    if (!formData.image.trim()) newErrors.image = 'Event image URL is required';
-
-    // Validate ticket types
-    if (formData.ticketTypes.length === 0) {
-      newErrors.ticketTypes = 'At least one ticket type is required';
-    } else {
-      formData.ticketTypes.forEach((ticket, index) => {
-        if (!ticket.name.trim()) newErrors[`ticket_${index}_name`] = 'Ticket name is required';
-        if (ticket.price < 0) newErrors[`ticket_${index}_price`] = 'Ticket price cannot be negative';
-      });
+  const validateForm = (): boolean => {
+    if (!formData.title.trim()) {
+      alert('Event title is required');
+      return false;
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const processedValue = type === 'number' ? Number(value) : value;
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: processedValue
-    }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    if (!formData.description.trim()) {
+      alert('Event description is required');
+      return false;
     }
-  };
-
-  const handleHighlightChange = (index: number, value: string) => {
-    const newHighlights = [...formData.highlights];
-    newHighlights[index] = value;
-    setFormData(prev => ({ ...prev, highlights: newHighlights }));
-  };
-
-  const addHighlight = () => {
-    setFormData(prev => ({
-      ...prev,
-      highlights: [...prev.highlights, '']
-    }));
-  };
-
-  const removeHighlight = (index: number) => {
-    if (formData.highlights.length > 1) {
-      const newHighlights = formData.highlights.filter((_, i) => i !== index);
-      setFormData(prev => ({ ...prev, highlights: newHighlights }));
+    if (!formData.category) {
+      alert('Event category is required');
+      return false;
     }
-  };
-
-  const handleTicketTypeChange = (index: number, field: keyof TicketType, value: string | number) => {
-    const newTicketTypes = [...formData.ticketTypes];
-    newTicketTypes[index] = { ...newTicketTypes[index], [field]: value };
-    setFormData(prev => ({ ...prev, ticketTypes: newTicketTypes }));
-
-    // Clear related errors
-    const errorKey = `ticket_${index}_${field}`;
-    if (errors[errorKey]) {
-      setErrors(prev => ({ ...prev, [errorKey]: '' }));
+    if (!formData.date) {
+      alert('Event date is required');
+      return false;
     }
-  };
-
-  const addTicketType = () => {
-    const newId = Math.max(...formData.ticketTypes.map(t => t.id)) + 1;
-    setFormData(prev => ({
-      ...prev,
-      ticketTypes: [...prev.ticketTypes, {
-        id: newId,
-        name: '',
-        price: 0,
-        description: ''
-      }]
-    }));
-  };
-
-  const removeTicketType = (index: number) => {
-    if (formData.ticketTypes.length > 1) {
-      const newTicketTypes = formData.ticketTypes.filter((_, i) => i !== index);
-      setFormData(prev => ({ ...prev, ticketTypes: newTicketTypes }));
+    if (!formData.time) {
+      alert('Event time is required');
+      return false;
     }
+    if (!formData.location.trim()) {
+      alert('Event location is required');
+      return false;
+    }
+    if (!formData.price || parseFloat(formData.price) < 0) {
+      alert('Valid price is required');
+      return false;
+    }
+    if (!formData.attendees || parseInt(formData.attendees) < 1) {
+      alert('Valid capacity is required');
+      return false;
+    }
+    if (!formData.image.trim()) {
+      alert('Event banner image is required');
+      return false;
+    }
+    if (!formData.venueDocument.trim()) {
+      alert('Venue booking document is required');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm() || !currentUser || !userData) return;
+    if (!validateForm()) return;
+    if (!currentUser) {
+      alert('You must be logged in to create an event');
+      return;
+    }
 
     setSubmitting(true);
+
     try {
       const eventData = {
-        ...formData,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location.trim(),
+        price: parseFloat(formData.price),
+        attendees: parseInt(formData.attendees),
+        image: formData.image.trim(),
+        venueDocument: formData.venueDocument.trim(),
         highlights: formData.highlights.filter(h => h.trim()),
+        ticketTypes: formData.ticketTypes.map(tt => ({
+          ...tt,
+          price: parseFloat(tt.price.toString())
+        })),
         organizer: {
-          name: userData.displayName || currentUser.displayName || 'Unknown Host',
-          rating: 4.5, // Default rating for new hosts
-          events: 1, // This would be calculated in a real app
-          avatar: userData.photoURL || currentUser.photoURL || ''
+          name: userData?.displayName || currentUser.displayName || 'Event Host',
+          rating: 4.5,
+          events: 1,
+          avatar: userData?.photoURL || currentUser.photoURL || ''
         },
         createdBy: currentUser.uid,
-        rating: 4.5 // Default rating for new events
+        rating: 4.5,
+        status: 'pending' as const
       };
 
       const eventId = await createEvent(eventData);
 
       if (eventId) {
-        navigate(`/event/${eventId}`, {
-          state: { message: 'Event created successfully!' }
-        });
-      } else {
-        setErrors({ submit: 'Failed to create event. Please try again.' });
+        alert('Event created successfully! It will be reviewed by our team before going live.');
+        navigate('/host-dashboard');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating event:', error);
-      setErrors({ submit: 'Failed to create event. Please try again.' });
+      alert('Failed to create event. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!canCreate) {
-    return (
-      <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-        <div className="text-center py-12">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-6">You need to be an approved host to create events.</p>
-          <button
-            onClick={() => navigate('/user-dashboard')}
-            className="btn-primary"
-          >
-            Go to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center mb-8">
-        <button
-          onClick={() => navigate('/host-dashboard')}
-          className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-50 transition-all duration-200 mr-4"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Event</h1>
-          <p className="text-gray-600">Share your amazing event with the world</p>
-        </div>
+    <div style={{
+      padding: '20px',
+      maxWidth: '800px',
+      margin: '0 auto',
+      backgroundColor: '#f8f9fa',
+      minHeight: '100vh'
+    }}>
+      {/* Success Banner */}
+      <div style={{
+        backgroundColor: 'green',
+        color: 'white',
+        padding: '15px',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        textAlign: 'center'
+      }}>
+        <h1 style={{ margin: '0', fontSize: '20px' }}>✅ CREATE EVENT PAGE IS WORKING!</h1>
       </div>
 
-      {/* Form */}
-      <div className="bg-white rounded-2xl shadow-soft p-8">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Error Display */}
-          {errors.submit && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <div className="flex items-center">
-                <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                <p className="text-red-700">{errors.submit}</p>
-              </div>
-            </div>
-          )}
+      {/* Form Container */}
+      <div style={{
+        backgroundColor: 'white',
+        padding: '30px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+      }}>
+        <h2 style={{ color: '#333', marginBottom: '25px', fontSize: '24px' }}>Create New Event</h2>
 
-          {/* Basic Information */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 border-b pb-2">Basic Information</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Event Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.title ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter event title"
-                />
-                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category *
-                </label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Capacity *
-                </label>
-                <input
-                  type="number"
-                  name="attendees"
-                  value={formData.attendees}
-                  onChange={handleInputChange}
-                  min="1"
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.attendees ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Maximum attendees"
-                />
-                {errors.attendees && <p className="text-red-500 text-sm mt-1">{errors.attendees}</p>}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description *
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${
-                    errors.description ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Describe your event..."
-                />
-                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
-              </div>
-            </div>
+        <form onSubmit={handleSubmit}>
+          {/* Event Title */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+              Event Title *
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '16px',
+                boxSizing: 'border-box'
+              }}
+              placeholder="Enter event title"
+              required
+            />
           </div>
 
-          {/* Date & Location */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 border-b pb-2">Date & Location</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  min={new Date().toISOString().split('T')[0]}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.date ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                />
-                {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Time *
-                </label>
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.time ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                />
-                {errors.time && <p className="text-red-500 text-sm mt-1">{errors.time}</p>}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location *
-                </label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.location ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Event venue or address"
-                />
-                {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
-              </div>
-            </div>
+          {/* Description */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+              Description *
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+                resize: 'vertical'
+              }}
+              placeholder="Describe your event"
+              required
+            />
           </div>
-          {/* Media & Highlights */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 border-b pb-2">Media & Highlights</h2>
 
+          {/* Category */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+              Category *
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) => handleInputChange('category', e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '16px',
+                boxSizing: 'border-box'
+              }}
+              required
+            >
+              <option value="">Select category</option>
+              <option value="Music">Music</option>
+              <option value="Sports">Sports</option>
+              <option value="Arts">Arts</option>
+              <option value="Food">Food</option>
+              <option value="Technology">Technology</option>
+              <option value="Business">Business</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* Date and Time */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Image URL *
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+                Date *
               </label>
               <input
-                type="url"
-                name="image"
-                value={formData.image}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  errors.image ? 'border-red-300' : 'border-gray-300'
-                }`}
-                placeholder="https://example.com/event-image.jpg"
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box'
+                }}
+                required
               />
-              {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
-              {formData.image && (
-                <div className="mt-3">
-                  <img
-                    src={formData.image}
-                    alt="Event preview"
-                    className="w-full h-48 object-cover rounded-xl"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Highlights
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+                Time *
               </label>
-              <div className="space-y-2">
-                {formData.highlights.map((highlight, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={highlight}
-                      onChange={(e) => handleHighlightChange(index, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Enter a highlight"
-                    />
-                    {formData.highlights.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeHighlight(index)}
-                        className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors duration-200"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addHighlight}
-                  className="flex items-center text-primary-500 hover:text-primary-600 text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Highlight
-                </button>
-              </div>
+              <input
+                type="time"
+                value={formData.time}
+                onChange={(e) => handleInputChange('time', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box'
+                }}
+                required
+              />
             </div>
           </div>
-          {/* Pricing & Tickets */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900 border-b pb-2">Pricing & Tickets</h2>
 
+          {/* Location */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+              Location *
+            </label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => handleInputChange('location', e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '16px',
+                boxSizing: 'border-box'
+              }}
+              placeholder="Enter event location"
+              required
+            />
+          </div>
+
+          {/* Price and Capacity */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Base Price *
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+                Price ($) *
               </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  className={`w-full pl-10 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.price ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="0.00"
-                />
-              </div>
-              {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.price}
+                onChange={(e) => handleInputChange('price', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box'
+                }}
+                placeholder="0.00"
+                required
+              />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Ticket Types *
-                </label>
-                <button
-                  type="button"
-                  onClick={addTicketType}
-                  className="flex items-center text-primary-500 hover:text-primary-600 text-sm font-medium"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Ticket Type
-                </button>
-              </div>
-
-              {errors.ticketTypes && <p className="text-red-500 text-sm mb-3">{errors.ticketTypes}</p>}
-
-              <div className="space-y-4">
-                {formData.ticketTypes.map((ticket, index) => (
-                  <div key={ticket.id} className="border border-gray-200 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-900">Ticket Type {index + 1}</h4>
-                      {formData.ticketTypes.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeTicketType(index)}
-                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={ticket.name}
-                          onChange={(e) => handleTicketTypeChange(index, 'name', e.target.value)}
-                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm ${
-                            errors[`ticket_${index}_name`] ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                          placeholder="e.g., General Admission"
-                        />
-                        {errors[`ticket_${index}_name`] && (
-                          <p className="text-red-500 text-xs mt-1">{errors[`ticket_${index}_name`]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Price *
-                        </label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <input
-                            type="number"
-                            value={ticket.price}
-                            onChange={(e) => handleTicketTypeChange(index, 'price', Number(e.target.value))}
-                            min="0"
-                            step="0.01"
-                            className={`w-full pl-8 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm ${
-                              errors[`ticket_${index}_price`] ? 'border-red-300' : 'border-gray-300'
-                            }`}
-                            placeholder="0.00"
-                          />
-                        </div>
-                        {errors[`ticket_${index}_price`] && (
-                          <p className="text-red-500 text-xs mt-1">{errors[`ticket_${index}_price`]}</p>
-                        )}
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Description
-                        </label>
-                        <input
-                          type="text"
-                          value={ticket.description || ''}
-                          onChange={(e) => handleTicketTypeChange(index, 'description', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                          placeholder="Brief description of what's included"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#555' }}>
+                Capacity *
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={formData.attendees}
+                onChange={(e) => handleInputChange('attendees', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  boxSizing: 'border-box'
+                }}
+                placeholder="Maximum attendees"
+                required
+              />
             </div>
+          </div>
+
+          {/* Event Banner Image Upload */}
+          <div style={{ marginBottom: '30px' }}>
+            <ImageUploadField
+              value={formData.image}
+              onChange={handleImageChange}
+              eventId={tempEventId}
+              label="Event Banner Image"
+              required={true}
+            />
+          </div>
+
+          {/* Venue Booking Document Upload */}
+          <div style={{ marginBottom: '30px' }}>
+            <DocumentUploadField
+              value={formData.venueDocument}
+              onChange={handleDocumentChange}
+              eventId={tempEventId}
+              label="Venue Booking Document"
+              required={true}
+            />
+            <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+              Upload your venue booking confirmation, contract, or permission letter (PDF, DOC, DOCX)
+            </p>
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-end space-x-4 pt-6 border-t">
+          <div style={{ textAlign: 'center', display: 'flex', gap: '15px', justifyContent: 'center' }}>
             <button
               type="button"
               onClick={() => navigate('/host-dashboard')}
-              className="btn-secondary"
+              style={{
+                backgroundColor: '#6c757d',
+                color: 'white',
+                padding: '15px 30px',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
+              disabled={submitting}
             >
               Cancel
             </button>
             <button
               type="submit"
+              style={{
+                backgroundColor: submitting ? '#6c757d' : '#28a745',
+                color: 'white',
+                padding: '15px 30px',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+              }}
               disabled={submitting}
-              className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Event...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Create Event
-                </>
-              )}
+              {submitting ? '⏳ Creating...' : '🎉 Create Event'}
             </button>
           </div>
         </form>

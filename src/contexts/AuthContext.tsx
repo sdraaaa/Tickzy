@@ -13,6 +13,7 @@ interface UserData {
   displayName: string | null;
   photoURL: string | null;
   role: string;
+  hostStatus?: 'none' | 'pending' | 'approved' | 'rejected';
 }
 
 interface AuthContextType {
@@ -80,19 +81,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             let finalRole = data.role || 'user';
 
             // If this is a predefined user but doesn't have the correct role, fix it
-            if (predefinedUser && data.role !== predefinedUser.role) {
-              console.log(`🔧 Correcting role for predefined user ${user.email}: ${data.role} → ${predefinedUser.role}`);
+            if (predefinedUser && (data.role !== predefinedUser.role || (predefinedUser.role === 'host' && !data.hostStatus))) {
+              console.log(`🔧 Correcting data for predefined user ${user.email}: role ${data.role} → ${predefinedUser.role}`);
               finalRole = predefinedUser.role;
 
-              // Update the role in Firestore
+              // Update the role and hostStatus in Firestore
               const operationId = `auth-role-correction-${user.uid}-${Date.now()}`;
               allowRoleModification(operationId);
 
-              await monitoredSetDoc(userDocRef, {
+              const updateData: any = {
                 role: predefinedUser.role,
                 isPreConfigured: true,
                 updatedAt: new Date().toISOString(),
-              }, { merge: true });
+              };
+
+              // Add hostStatus for host users
+              if (predefinedUser.role === 'host' && predefinedUser.hostStatus) {
+                updateData.hostStatus = predefinedUser.hostStatus;
+                console.log(`🔧 Setting hostStatus for ${user.email}: ${predefinedUser.hostStatus}`);
+              }
+
+              await monitoredSetDoc(userDocRef, updateData, { merge: true });
             }
 
             userData = {
@@ -101,6 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               displayName: user.displayName,
               photoURL: user.photoURL,
               role: finalRole,
+              hostStatus: data.hostStatus,
             };
 
             // Update non-role fields if they've changed
@@ -129,13 +139,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 displayName: user.displayName,
                 photoURL: user.photoURL,
                 role: predefinedUser.role,
+                hostStatus: predefinedUser.hostStatus,
               };
 
               // Create the user document with predefined role
               const operationId = `auth-predefined-user-${user.uid}-${Date.now()}`;
               allowRoleModification(operationId);
 
-              await monitoredSetDoc(userDocRef, {
+              const newUserData: any = {
                 uid: user.uid,
                 email: user.email,
                 displayName: user.displayName,
@@ -143,7 +154,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 role: predefinedUser.role,
                 isPreConfigured: true,
                 createdAt: new Date().toISOString(),
-              }, { merge: true });
+              };
+
+              // Add hostStatus for host users
+              if (predefinedUser.role === 'host' && predefinedUser.hostStatus) {
+                newUserData.hostStatus = predefinedUser.hostStatus;
+                console.log(`✅ Setting hostStatus for new predefined user ${user.email}: ${predefinedUser.hostStatus}`);
+              }
+
+              await monitoredSetDoc(userDocRef, newUserData, { merge: true });
             } else {
               console.log(`✅ Creating new document for regular user ${user.email} with default role: user`);
 

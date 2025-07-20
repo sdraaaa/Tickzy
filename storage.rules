@@ -1,0 +1,115 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Tickzy
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is a host
+    function isHost() {
+      return isAuthenticated() && 
+             resource.metadata != null && 
+             resource.metadata.uploadedBy == request.auth.uid;
+    }
+    
+    // Helper function to check if user has host role (requires Firestore lookup)
+    function isApprovedHost() {
+      return isAuthenticated() &&
+             exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+             get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'host' &&
+             get(/databases/(default)/documents/users/$(request.auth.uid)).data.hostStatus == 'approved';
+    }
+
+    // Helper function to check if user can create events (approved hosts and admins only)
+    function canCreateEvents() {
+      return isAuthenticated() &&
+             exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+             ((get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'host' &&
+               get(/databases/(default)/documents/users/$(request.auth.uid)).data.hostStatus == 'approved') ||
+              get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Helper function to validate document file
+    function isValidDocument() {
+      return (request.resource.contentType == 'application/pdf' ||
+              request.resource.contentType == 'application/msword' ||
+              request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') &&
+             request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    // Helper function to validate image file
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // Event banner images - VERY PERMISSIVE FOR CORS TESTING
+    match /events/banners/{eventId}/{filename} {
+      // Allow any authenticated user to upload images
+      allow create: if isAuthenticated();
+
+      // Allow anyone to read banner images (for public display)
+      allow read: if true;
+
+      // Allow authenticated users to delete uploaded images
+      allow delete: if isAuthenticated();
+
+      // Allow updates for testing
+      allow update: if isAuthenticated();
+    }
+
+    // Event venue documents - VERY PERMISSIVE FOR CORS TESTING
+    match /events/documents/{eventId}/{filename} {
+      // Allow any authenticated user to upload documents
+      allow create: if isAuthenticated();
+
+      // Allow authenticated users to read venue documents
+      allow read: if isAuthenticated();
+
+      // Allow authenticated users to delete uploaded documents
+      allow delete: if isAuthenticated();
+
+      // Allow updates for testing
+      allow update: if isAuthenticated();
+    }
+    
+    // User profile images (future feature)
+    match /users/profiles/{userId}/{filename} {
+      // Allow users to upload their own profile images
+      allow create, update: if isAuthenticated() && 
+                               request.auth.uid == userId &&
+                               isValidImage();
+      
+      // Allow anyone to read profile images
+      allow read: if true;
+      
+      // Allow users to delete their own profile images
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Event gallery images (future feature)
+    match /events/gallery/{eventId}/{filename} {
+      // Allow approved hosts to upload gallery images for their events
+      allow create: if isAuthenticated() && 
+                       isApprovedHost() &&
+                       isValidImage();
+      
+      // Allow anyone to read gallery images
+      allow read: if true;
+      
+      // Allow hosts to delete gallery images they uploaded
+      allow delete: if isAuthenticated() && 
+                       resource.metadata != null &&
+                       resource.metadata.uploadedBy == request.auth.uid;
+    }
+    
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

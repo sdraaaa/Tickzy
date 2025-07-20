@@ -7,6 +7,7 @@ export interface UserRole {
   displayName: string;
   firstName?: string;
   lastName?: string;
+  hostStatus?: 'none' | 'pending' | 'approved' | 'rejected';
 }
 
 // Predefined user roles for Tickzy application
@@ -23,7 +24,8 @@ export const PREDEFINED_USERS: UserRole[] = [
     role: 'host',
     displayName: 'Abdul Aleem Sidra',
     firstName: 'Abdul Aleem',
-    lastName: 'Sidra'
+    lastName: 'Sidra',
+    hostStatus: 'approved'
   },
   {
     email: 'aleemsidra2205@gmail.com',
@@ -72,7 +74,7 @@ export const createUserWithRole = async (userRole: UserRole): Promise<void> => {
       // Create a new user document with a generated ID
       // Note: This creates a placeholder document that will be updated when the user actually signs in
       const userDocRef = doc(collection(db, 'users'));
-      await setDoc(userDocRef, {
+      const userData: any = {
         email: userRole.email,
         role: userRole.role,
         displayName: userRole.displayName,
@@ -80,7 +82,14 @@ export const createUserWithRole = async (userRole: UserRole): Promise<void> => {
         lastName: userRole.lastName,
         createdAt: new Date().toISOString(),
         isPreConfigured: true, // Flag to indicate this was pre-configured
-      });
+      };
+
+      // Add hostStatus for host users
+      if (userRole.role === 'host' && userRole.hostStatus) {
+        userData.hostStatus = userRole.hostStatus;
+      }
+
+      await setDoc(userDocRef, userData);
       
       console.log(`Created new user document for ${userRole.email} with role ${userRole.role}`);
     }

@@ -48,17 +48,45 @@ service cloud.firestore {
     match /events/{eventId} {
       // Anyone can read events (public access for browsing)
       allow read: if true;
-      
-      // Only approved hosts can create events
-      allow create: if isApprovedHost() && 
-                       request.resource.data.createdBy == request.auth.uid;
-      
-      // Only event creator or admin can update events
-      allow update: if isAuthenticated() && 
-                       (resource.data.createdBy == request.auth.uid || isAdmin());
-      
+
+      // Only approved hosts can create events with proper validation
+      allow create: if isApprovedHost() &&
+                       request.resource.data.createdBy == request.auth.uid &&
+                       // Validate required fields
+                       request.resource.data.title is string &&
+                       request.resource.data.title.size() >= 3 &&
+                       request.resource.data.title.size() <= 100 &&
+                       request.resource.data.description is string &&
+                       request.resource.data.description.size() >= 10 &&
+                       request.resource.data.description.size() <= 1000 &&
+                       request.resource.data.location is string &&
+                       request.resource.data.location.size() >= 5 &&
+                       request.resource.data.location.size() <= 200 &&
+                       request.resource.data.date is string &&
+                       request.resource.data.time is string &&
+                       request.resource.data.image is string &&
+                       request.resource.data.price is number &&
+                       request.resource.data.price >= 0 &&
+                       request.resource.data.attendees is number &&
+                       request.resource.data.attendees >= 1 &&
+                       request.resource.data.attendees <= 10000 &&
+                       // Status must be 'pending' for new events (hosts cannot set other statuses)
+                       request.resource.data.status == 'pending';
+
+      // Event creators can update their events (except status and admin fields), admins can update everything
+      allow update: if isAuthenticated() &&
+                       ((resource.data.createdBy == request.auth.uid &&
+                         // Hosts cannot change status, statusUpdatedAt, statusUpdatedBy, approvalReason, rejectionReason
+                         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'statusUpdatedAt', 'statusUpdatedBy', 'approvalReason', 'rejectionReason', 'cancellationReason']))) ||
+                        isAdmin());
+
+      // Separate rule for admin-only status updates
+      allow update: if isAdmin() &&
+                       // Admins can only update status-related fields in this context
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusUpdatedAt', 'statusUpdatedBy', 'approvalReason', 'rejectionReason', 'cancellationReason']);
+
       // Only event creator or admin can delete events
-      allow delete: if isAuthenticated() && 
+      allow delete: if isAuthenticated() &&
                        (resource.data.createdBy == request.auth.uid || isAdmin());
     }
     
