@@ -3,8 +3,10 @@ import { Users, CheckCircle, AlertTriangle, DollarSign, Calendar, Eye, Edit, Tra
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToPendingHostRequests, subscribeToAllHostRequests, approveHostRequest, rejectHostRequest, HostRequest } from '@/services/hostService';
+import { subscribeToPendingHostRequestsEnhanced, subscribeToAllHostRequestsEnhanced, approveHostRequestEnhanced, rejectHostRequestEnhanced } from '@/services/enhancedHostService';
 import { subscribeToAllEvents, subscribeToPendingEvents, Event } from '@/services/eventsService';
 import { subscribeToEventApprovalStats, approveEvent, rejectEvent, bulkApproveEvents, bulkRejectEvents, EventApprovalStats } from '@/services/adminService';
+import { subscribeToAllEventsEnhanced, subscribeToPendingEventsEnhanced, approveEventEnhanced } from '@/services/enhancedEventsService';
 import { useNotifications, createEventNotifications } from '@/components/Notifications/NotificationSystem';
 import { logAdminDebugInfo, fixAdminRole, testEventApproval, isCurrentUserAdmin } from '@/utils/adminDebugger';
 
@@ -36,6 +38,7 @@ const AdminDashboard: React.FC = () => {
   const [processingEvents, setProcessingEvents] = useState<string[]>([]);
   const [debugMode, setDebugMode] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'reconnecting'>('online');
 
   // Subscribe to host requests and events
   useEffect(() => {
@@ -43,26 +46,90 @@ const AdminDashboard: React.FC = () => {
 
     setLoading(true);
 
-    // Subscribe to pending host requests
-    const unsubscribePending = subscribeToPendingHostRequests((requests) => {
-      setPendingHostRequests(requests);
-    });
+    // Subscribe to pending host requests with enhanced real-time
+    console.log('🔄 Setting up enhanced host requests subscriptions...');
+    const pendingHostSubscription = subscribeToPendingHostRequestsEnhanced(
+      (requests) => {
+        console.log(`📡 Admin: Received ${requests.length} pending host requests`);
+        setPendingHostRequests(requests);
+        setConnectionStatus('online');
+      },
+      (error) => {
+        console.error('Enhanced pending host requests subscription error:', error);
+        setConnectionStatus('offline');
 
-    // Subscribe to all host requests
-    const unsubscribeAll = subscribeToAllHostRequests((requests) => {
-      setAllHostRequests(requests);
-    });
+        // Fallback to regular subscription
+        console.log('🔄 Falling back to regular pending host requests subscription...');
+        const fallback = subscribeToPendingHostRequests((requests) => {
+          setPendingHostRequests(requests);
+          setConnectionStatus('online');
+        });
+        return fallback;
+      }
+    );
 
-    // Subscribe to all events
-    const unsubscribeEvents = subscribeToAllEvents((fetchedEvents) => {
-      setEvents(fetchedEvents);
-      setLoading(false);
-    });
+    // Subscribe to all host requests with enhanced real-time
+    const allHostSubscription = subscribeToAllHostRequestsEnhanced(
+      (requests) => {
+        console.log(`📡 Admin: Received ${requests.length} total host requests`);
+        setAllHostRequests(requests);
+        setConnectionStatus('online');
+      },
+      (error) => {
+        console.error('Enhanced all host requests subscription error:', error);
+        setConnectionStatus('offline');
 
-    // Subscribe to pending events
-    const unsubscribePendingEvents = subscribeToPendingEvents((fetchedPendingEvents) => {
-      setPendingEvents(fetchedPendingEvents);
-    });
+        // Fallback to regular subscription
+        console.log('🔄 Falling back to regular all host requests subscription...');
+        const fallback = subscribeToAllHostRequests((requests) => {
+          setAllHostRequests(requests);
+          setConnectionStatus('online');
+        });
+        return fallback;
+      }
+    );
+
+    // Subscribe to all events with enhanced real-time
+    const allEventsSubscription = subscribeToAllEventsEnhanced(
+      (fetchedEvents) => {
+        console.log(`📡 Admin: Received ${fetchedEvents.length} total events`);
+        setEvents(fetchedEvents);
+        setLoading(false);
+        setConnectionStatus('online');
+      },
+      (error) => {
+        console.error('Enhanced all events subscription error:', error);
+        setConnectionStatus('offline');
+
+        // Fallback to regular subscription
+        const fallback = subscribeToAllEvents((fetchedEvents) => {
+          setEvents(fetchedEvents);
+          setLoading(false);
+          setConnectionStatus('online');
+        });
+        return fallback;
+      }
+    );
+
+    // Subscribe to pending events with enhanced real-time
+    const pendingEventsSubscription = subscribeToPendingEventsEnhanced(
+      (fetchedPendingEvents) => {
+        console.log(`📡 Admin: Received ${fetchedPendingEvents.length} pending events`);
+        setPendingEvents(fetchedPendingEvents);
+        setConnectionStatus('online');
+      },
+      (error) => {
+        console.error('Enhanced pending events subscription error:', error);
+        setConnectionStatus('offline');
+
+        // Fallback to regular subscription
+        const fallback = subscribeToPendingEvents((fetchedPendingEvents) => {
+          setPendingEvents(fetchedPendingEvents);
+          setConnectionStatus('online');
+        });
+        return fallback;
+      }
+    );
 
     // Subscribe to event approval stats
     const unsubscribeEventStats = subscribeToEventApprovalStats((stats) => {
@@ -70,10 +137,11 @@ const AdminDashboard: React.FC = () => {
     });
 
     return () => {
-      if (unsubscribePending) unsubscribePending();
-      if (unsubscribeAll) unsubscribeAll();
-      if (unsubscribeEvents) unsubscribeEvents();
-      if (unsubscribePendingEvents) unsubscribePendingEvents();
+      // Cleanup enhanced subscriptions
+      if (pendingHostSubscription) pendingHostSubscription.stop();
+      if (allHostSubscription) allHostSubscription.stop();
+      if (allEventsSubscription) allEventsSubscription.stop();
+      if (pendingEventsSubscription) pendingEventsSubscription.stop();
       if (unsubscribeEventStats) unsubscribeEventStats();
     };
   }, [currentUser]);
@@ -93,8 +161,16 @@ const AdminDashboard: React.FC = () => {
 
     setActionLoading(userId);
     try {
-      const success = await approveHostRequest(userId, currentUser.uid);
-      if (!success) {
+      console.log(`🔄 Approving host request for user ${userId}...`);
+      const result = await approveHostRequestEnhanced(userId, currentUser.uid);
+
+      if (result.success) {
+        if (result.verified) {
+          console.log('✅ Host request approved and verified in real-time');
+        } else {
+          console.warn('⚠️ Host request approved but real-time verification failed');
+        }
+      } else {
         alert('Failed to approve host request. Please try again.');
       }
     } catch (error) {
@@ -114,9 +190,30 @@ const AdminDashboard: React.FC = () => {
 
     setProcessingEvents(prev => [...prev, eventId]);
     try {
-      await approveEvent(eventId, currentUser.uid);
-      addNotification(createEventNotifications.eventApproved(eventTitle));
-      console.log(`✅ Event ${eventId} approved successfully`);
+      console.log(`🔄 Approving event ${eventId} with enhanced real-time verification...`);
+      const result = await approveEventEnhanced(eventId, currentUser.uid);
+
+      if (result.success) {
+        addNotification(createEventNotifications.eventApproved(eventTitle));
+
+        if (result.verified) {
+          console.log(`✅ Event ${eventId} approved and verified in real-time`);
+          addNotification({
+            type: 'success',
+            title: 'Real-time Verified',
+            message: 'Event approval propagated to all users instantly',
+            duration: 3000
+          });
+        } else {
+          console.warn(`⚠️ Event ${eventId} approved but real-time verification failed`);
+          addNotification({
+            type: 'warning',
+            title: 'Approval Successful',
+            message: 'Event approved but real-time sync may be delayed',
+            duration: 5000
+          });
+        }
+      }
     } catch (error: any) {
       console.error('Error approving event:', error);
       addNotification({

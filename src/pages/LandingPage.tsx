@@ -6,31 +6,65 @@ import Banner from '@/components/Banner';
 import EventCard from '@/components/Events/EventCard';
 import CategoryFilter from '@/components/UI/CategoryFilter';
 import { subscribeToEvents, Event } from '@/services/eventsService';
+import { subscribeToEventsEnhanced, monitorFirestoreConnection } from '@/services/enhancedEventsService';
 
 const LandingPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'reconnecting'>('online');
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
   // Landing page is always publicly accessible - no auto-redirects
   // Users will only be redirected when they explicitly click "Login" or access protected routes
 
-  // Load events from Firebase with real-time updates
+  // Monitor Firestore connection
+  useEffect(() => {
+    const cleanup = monitorFirestoreConnection();
+    return cleanup;
+  }, []);
+
+  // Load events from Firebase with enhanced real-time updates
   useEffect(() => {
     setLoading(true);
     setError(null);
+    setConnectionStatus('online');
 
-    const unsubscribe = subscribeToEvents((fetchedEvents) => {
-      setEvents(fetchedEvents);
-      setLoading(false);
-    }, selectedCategory);
+    console.log(`🔄 Setting up enhanced real-time subscription for category: ${selectedCategory}`);
+
+    const subscription = subscribeToEventsEnhanced(
+      (fetchedEvents) => {
+        console.log(`📡 Received ${fetchedEvents.length} events from enhanced subscription`);
+        setEvents(fetchedEvents);
+        setLoading(false);
+        setConnectionStatus('online');
+      },
+      selectedCategory,
+      (error) => {
+        console.error('Enhanced subscription error:', error);
+        setError(`Real-time connection error: ${error.message}`);
+        setConnectionStatus('offline');
+
+        // Fallback to regular subscription
+        console.log('🔄 Falling back to regular subscription...');
+        setConnectionStatus('reconnecting');
+
+        const fallbackUnsubscribe = subscribeToEvents((fetchedEvents) => {
+          console.log(`📡 Fallback: Received ${fetchedEvents.length} events`);
+          setEvents(fetchedEvents);
+          setLoading(false);
+          setConnectionStatus('online');
+        }, selectedCategory);
+
+        return fallbackUnsubscribe;
+      }
+    );
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
+      if (subscription) {
+        subscription.stop();
       }
     };
   }, [selectedCategory]);
@@ -101,8 +135,17 @@ const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <PublicNavbar />
-      
-      <main className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+
+      {/* Connection Status Indicator */}
+      {connectionStatus !== 'online' && (
+        <div className={`fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm font-medium ${
+          connectionStatus === 'offline' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {connectionStatus === 'offline' ? '📴 Connection lost - Events may not be up to date' : '🔄 Reconnecting...'}
+        </div>
+      )}
+
+      <main className={`px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto ${connectionStatus !== 'online' ? 'pt-28' : 'pt-20'}`}>
         {/* Banner */}
         <Banner 
           title="Discover Amazing Events"

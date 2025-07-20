@@ -219,6 +219,14 @@ export const testAuthRedirect = () => {
 
 // Import sample events utility
 import { createSampleEvents, checkSampleEventsExist } from './seedSampleEvents';
+// Import real-time debugging utilities
+import {
+  testEventApprovalRealTime,
+  testHostRequestRealTime,
+  testApprovalWorkflow,
+  checkFirestoreIndexes,
+  runComprehensiveRealTimeTests
+} from './realTimeDebugger';
 
 // Make functions available in browser console for debugging
 if (typeof window !== 'undefined') {
@@ -231,4 +239,9 @@ if (typeof window !== 'undefined') {
   (window as any).testAuthRedirect = testAuthRedirect;
   (window as any).createSampleEvents = createSampleEvents;
   (window as any).checkSampleEventsExist = checkSampleEventsExist;
+  (window as any).testEventApprovalRealTime = testEventApprovalRealTime;
+  (window as any).testHostRequestRealTime = testHostRequestRealTime;
+  (window as any).testApprovalWorkflow = testApprovalWorkflow;
+  (window as any).checkFirestoreIndexes = checkFirestoreIndexes;
+  (window as any).runComprehensiveRealTimeTests = runComprehensiveRealTimeTests;
 }
