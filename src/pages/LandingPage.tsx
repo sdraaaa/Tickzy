@@ -1,197 +1,96 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import PublicNavbar from '@/components/Layout/PublicNavbar';
-import Banner from '@/components/Banner';
-import EventCard from '@/components/Events/EventCard';
-import CategoryFilter from '@/components/UI/CategoryFilter';
-import { subscribeToEvents, Event } from '@/services/eventsService';
-import { subscribeToEventsEnhanced, monitorFirestoreConnection } from '@/services/enhancedEventsService';
+/**
+ * LandingPage Component
+ *
+ * Dark-themed public landing page for Tickzy platform
+ * Features: Navbar, Hero Section, placeholder sections, Footer
+ */
+
+import React from 'react';
+import Navbar from '../components/ui/Navbar';
+import HeroSection from '../components/ui/HeroSection';
+import Footer from '../components/ui/Footer';
 
 const LandingPage: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [loading, setLoading] = useState(true);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline' | 'reconnecting'>('online');
-  const navigate = useNavigate();
-  const { currentUser } = useAuth();
-
-  // Landing page is always publicly accessible - no auto-redirects
-  // Users will only be redirected when they explicitly click "Login" or access protected routes
-
-  // Monitor Firestore connection
-  useEffect(() => {
-    const cleanup = monitorFirestoreConnection();
-    return cleanup;
-  }, []);
-
-  // Load events from Firebase with enhanced real-time updates
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setConnectionStatus('online');
-
-    console.log(`🔄 Setting up enhanced real-time subscription for category: ${selectedCategory}`);
-
-    const subscription = subscribeToEventsEnhanced(
-      (fetchedEvents) => {
-        console.log(`📡 Received ${fetchedEvents.length} events from enhanced subscription`);
-        setEvents(fetchedEvents);
-        setLoading(false);
-        setConnectionStatus('online');
-      },
-      selectedCategory,
-      (error) => {
-        console.error('Enhanced subscription error:', error);
-        setError(`Real-time connection error: ${error.message}`);
-        setConnectionStatus('offline');
-
-        // Fallback to regular subscription
-        console.log('🔄 Falling back to regular subscription...');
-        setConnectionStatus('reconnecting');
-
-        const fallbackUnsubscribe = subscribeToEvents((fetchedEvents) => {
-          console.log(`📡 Fallback: Received ${fetchedEvents.length} events`);
-          setEvents(fetchedEvents);
-          setLoading(false);
-          setConnectionStatus('online');
-        }, selectedCategory);
-
-        return fallbackUnsubscribe;
-      }
-    );
-
-    return () => {
-      if (subscription) {
-        subscription.stop();
-      }
-    };
-  }, [selectedCategory]);
-
-  const filteredEvents = events; // Events are already filtered by the subscription
-
-  const handleBooking = (eventId?: string) => {
-    if (!currentUser) {
-      // Store the intended booking URL for redirect after login
-      const returnUrl = eventId ? `/event/${eventId}?booking=true` : window.location.pathname;
-      sessionStorage.setItem('returnUrl', returnUrl);
-      sessionStorage.setItem('bookingIntent', 'true');
-
-      // Navigate to login with a clear message
-      const message = encodeURIComponent('Please log in to book tickets for this event');
-      navigate(`/login?message=${message}`);
-    } else {
-      // Check if user is admin - admins cannot book events
-      if (currentUser.email === 'aleemsidra2205@gmail.com') {
-        alert('Admins cannot book events. Admins are meant to manage and approve events, not book them as attendees.');
-        return;
-      }
-
-      // User is authenticated and not admin, navigate to event details page
-      navigate(`/event/${eventId}`);
-    }
-  };
-
-  // Show loading while loading events
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <PublicNavbar />
-        <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading events...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <PublicNavbar />
-        <div className="pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-red-600 mb-4">Error loading events: {error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="btn-primary"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PublicNavbar />
+    <div className="min-h-screen bg-black text-white">
+      <Navbar />
+      <HeroSection />
+      
 
-      {/* Connection Status Indicator */}
-      {connectionStatus !== 'online' && (
-        <div className={`fixed top-16 left-0 right-0 z-40 px-4 py-2 text-center text-sm font-medium ${
-          connectionStatus === 'offline' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-        }`}>
-          {connectionStatus === 'offline' ? '📴 Connection lost - Events may not be up to date' : '🔄 Reconnecting...'}
-        </div>
-      )}
 
-      <main className={`px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto ${connectionStatus !== 'online' ? 'pt-28' : 'pt-20'}`}>
-        {/* Banner */}
-        <Banner 
-          title="Discover Amazing Events"
-          subtitle="Find and book tickets for the best events happening around you"
-          image="https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1200"
-          showSearchBar={true}
-        />
-
-        {/* Category Filter */}
-        <CategoryFilter 
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-        />
-
-        {/* Events Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {selectedCategory === 'all' ? 'All Events' : `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Events`}
+      {/* Why Tickzy Section */}
+      <section className="py-20 bg-neutral-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 tracking-wide">
+              Why Tickzy?
             </h2>
-            <p className="text-gray-600">
-              {filteredEvents.length} events found
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+              A modern platform for event discovery and ticket management.
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                showBookButton={true}
-                onBookClick={() => handleBooking(event.id)}
-              />
-            ))}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="text-center group">
+              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl">🎫</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Easy Booking
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Simple and intuitive ticket booking process designed for everyone.
+              </p>
+            </div>
+
+            <div className="text-center group">
+              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl">📱</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Mobile Ready
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Access your tickets on any device, anywhere you go.
+              </p>
+            </div>
+
+            <div className="text-center group">
+              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl">🔒</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Secure
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Your data and payments are protected with modern security.
+              </p>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Load More Button */}
-        {filteredEvents.length >= 6 && (
-          <div className="text-center mb-8">
-            <button className="bg-white text-gray-700 px-6 py-3 rounded-xl border border-gray-300 hover:bg-gray-50 transition-colors duration-200 font-medium">
-              Load More Events
+      {/* Call-to-Action Section */}
+      <section className="py-20 bg-gradient-to-r from-purple-900 via-blue-900 to-purple-900">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 tracking-wide">
+            Ready to Get Started?
+          </h2>
+          <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto">
+            Join Tickzy and discover amazing events in your area.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+            <button className="bg-white text-black font-bold px-10 py-4 rounded-full text-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-2xl">
+              Sign Up
+            </button>
+            <button className="border-2 border-white text-white hover:bg-white hover:text-black font-semibold px-10 py-4 rounded-full text-lg transition-all duration-300">
+              Learn More
             </button>
           </div>
-        )}
-      </main>
+        </div>
+      </section>
+
+      <Footer />
     </div>
   );
 };
