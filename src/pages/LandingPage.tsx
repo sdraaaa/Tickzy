@@ -6,17 +6,17 @@
  */
 
 import React from 'react';
-import Navbar from '../components/ui/Navbar';
+import LandingNavbar from '../components/Landing/LandingNavbar';
 import HeroSection from '../components/ui/HeroSection';
+import EventShowcase from '../components/Landing/EventShowcase';
 import Footer from '../components/ui/Footer';
 
 const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white">
-      <Navbar />
+      <LandingNavbar />
       <HeroSection />
-      
-
+      <EventShowcase />
 
       {/* Why Tickzy Section */}
       <section className="py-20 bg-neutral-900">
@@ -79,14 +79,7 @@ const LandingPage: React.FC = () => {
           <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto">
             Join Tickzy and discover amazing events in your area.
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-            <button className="bg-white text-black font-bold px-10 py-4 rounded-full text-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 shadow-2xl">
-              Sign Up
-            </button>
-            <button className="border-2 border-white text-white hover:bg-white hover:text-black font-semibold px-10 py-4 rounded-full text-lg transition-all duration-300">
-              Learn More
-            </button>
-          </div>
+          {/* CTA buttons are now handled in EventShowcase component */}
         </div>
       </section>
 
