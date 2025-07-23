@@ -5,8 +5,8 @@
  * Includes route guards to prevent authenticated users from accessing public pages
  */
 
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './routes/ProtectedRoute';
 import AuthRedirect from './routes/AuthRedirect';
@@ -16,9 +16,28 @@ import ExploreEvents from './pages/ExploreEvents';
 import Dashboard from './components/Dashboard';
 
 const App: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.log('App mounted, current location:', location.pathname);
+    console.log('Window location:', window.location.href);
+    console.log('Environment:', {
+      hostname: window.location.hostname,
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash
+    });
+  }, [location]);
+
   return (
     <AuthProvider>
-      <Routes>
+      <div className="min-h-screen bg-black">
+        {/* Debug indicator */}
+        <div className="fixed top-4 left-4 bg-green-600 text-white px-2 py-1 rounded text-xs z-50">
+          App Loaded ✓
+        </div>
+
+        <Routes>
         {/* Landing page - redirect authenticated users to dashboard */}
         <Route path="/" element={
           <AuthRedirect>
@@ -43,6 +62,7 @@ const App: React.FC = () => {
           </ProtectedRoute>
         } />
       </Routes>
+      </div>
     </AuthProvider>
   );
 };
