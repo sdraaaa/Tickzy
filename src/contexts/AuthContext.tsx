@@ -48,17 +48,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
 
   // Create or get user document from Firestore
   const createOrGetUserDocument = async (firebaseUser: User): Promise<UserData | null> => {
-    if (!firebaseUser.email) return null;
+    if (!firebaseUser.email || !db) return null;
 
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-    
     try {
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+
       // Check if user document exists
       const userDoc = await getDoc(userDocRef);
-      
+
       if (userDoc.exists()) {
         // User exists, return existing data
         return userDoc.data() as UserData;
@@ -77,16 +78,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error creating/getting user document:', error);
+      setFirebaseError('Failed to access user data. Please try again later.');
       return null;
     }
   };
 
   // Logout function
   const logout = async (): Promise<void> => {
+    if (!auth) {
+      console.warn('Firebase auth not initialized');
+      return;
+    }
+
     try {
       await signOut(auth);
       setUser(null);
       setUserData(null);
+      setFirebaseError(null);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
@@ -95,22 +103,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Listen for auth state changes
   useEffect(() => {
+    if (!auth) {
+      console.warn('Firebase auth not initialized, skipping auth state listener');
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
-      
-      if (firebaseUser) {
-        // User is signed in
-        setUser(firebaseUser);
-        
-        // Get or create user document in Firestore
-        const userDoc = await createOrGetUserDocument(firebaseUser);
-        setUserData(userDoc);
-      } else {
-        // User is signed out
+      setFirebaseError(null);
+
+      try {
+        if (firebaseUser) {
+          // User is signed in
+          setUser(firebaseUser);
+
+          // Get or create user document in Firestore
+          const userDoc = await createOrGetUserDocument(firebaseUser);
+          setUserData(userDoc);
+        } else {
+          // User is signed out
+          setUser(null);
+          setUserData(null);
+        }
+      } catch (error) {
+        console.error('Error in auth state change:', error);
+        setFirebaseError('Authentication error. Please refresh the page.');
         setUser(null);
         setUserData(null);
       }
-      
+
       setLoading(false);
     });
 
@@ -127,6 +149,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
+      {firebaseError && (
+        <div className="fixed top-4 right-4 bg-red-600 text-white p-4 rounded-lg shadow-lg z-50 max-w-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{firebaseError}</span>
+            <button
+              onClick={() => setFirebaseError(null)}
+              className="ml-2 text-white hover:text-gray-200"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );
