@@ -16,6 +16,7 @@ import ExploreEvents from './pages/ExploreEvents';
 import Dashboard from './components/Dashboard';
 import CreateEvent from './pages/CreateEvent';
 import RequestHost from './pages/RequestHost';
+import VerifyEmail from './pages/VerifyEmail';
 import Footer from './components/ui/Footer';
 
 const App: React.FC = () => {
@@ -40,6 +41,9 @@ const App: React.FC = () => {
             <Login />
           </AuthRedirect>
         } />
+
+        {/* Email verification page */}
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* Explore events - accessible to all users */}
         <Route path="/explore-events" element={<ExploreEvents />} />

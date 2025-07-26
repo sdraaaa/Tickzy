@@ -6,8 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
+import { signInWithPopup, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { useNavigate, Link } from 'react-router-dom';
 import { auth, provider } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import LandingNavbar from '../components/Landing/LandingNavbar';
@@ -15,15 +15,111 @@ import LandingNavbar from '../components/Landing/LandingNavbar';
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
-  const { user, userData } = useAuth();
+  const { user, userData, needsEmailVerification } = useAuth();
 
-  // Redirect if user is already logged in
+  // Redirect logic based on authentication and verification status
   useEffect(() => {
     if (user && userData) {
-      navigate('/dashboard');
+      // Check if user needs email verification
+      if (needsEmailVerification()) {
+        navigate('/verify-email');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [user, userData, navigate]);
+  }, [user, userData, navigate, needsEmailVerification]);
+
+  // Handle email/password sign in
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Check if email is verified
+      if (!user.emailVerified) {
+        navigate('/verify-email');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Email sign in error:', error);
+      setError(getErrorMessage(error.code));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle email/password sign up
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Send email verification
+      await sendEmailVerification(user);
+
+      // Redirect to verification page
+      navigate('/verify-email');
+    } catch (error: any) {
+      console.error('Email sign up error:', error);
+      setError(getErrorMessage(error.code));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get user-friendly error messages
+  const getErrorMessage = (errorCode: string): string => {
+    switch (errorCode) {
+      case 'auth/user-not-found':
+        return 'No account found with this email address';
+      case 'auth/wrong-password':
+        return 'Incorrect password';
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists';
+      case 'auth/weak-password':
+        return 'Password is too weak';
+      case 'auth/invalid-email':
+        return 'Invalid email address';
+      case 'auth/too-many-requests':
+        return 'Too many failed attempts. Please try again later';
+      default:
+        return 'An error occurred. Please try again';
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -84,10 +180,10 @@ const Login: React.FC = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">
-              Welcome to Tickzy
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
             </h1>
             <p className="text-gray-400">
-              Sign in to discover amazing events
+              {isSignUp ? 'Join Tickzy to discover amazing events' : 'Sign in to your account'}
             </p>
           </div>
 
@@ -97,6 +193,78 @@ const Login: React.FC = () => {
               <p className="text-red-300 text-sm">{error}</p>
             </div>
           )}
+
+          {/* Email/Password Form */}
+          <form onSubmit={isSignUp ? handleEmailSignUp : handleEmailSignIn} className="space-y-4 mb-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-neutral-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-neutral-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            {isSignUp && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-neutral-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Confirm your password"
+                  required
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>
+              ) : (
+                isSignUp ? 'Create Account' : 'Sign In'
+              )}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-neutral-900 text-gray-400">Or continue with</span>
+            </div>
+          </div>
 
           {/* Google Sign-In Button */}
           <button
@@ -147,8 +315,27 @@ const Login: React.FC = () => {
           </div>
         </div>
 
+        {/* Toggle Sign In/Sign Up */}
+        <div className="text-center mt-6 mb-4">
+          <p className="text-gray-400">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+              }}
+              className="text-purple-400 hover:text-purple-300 font-medium transition-colors duration-200"
+            >
+              {isSignUp ? 'Sign In' : 'Sign Up'}
+            </button>
+          </p>
+        </div>
+
         {/* Back to Home */}
-        <div className="text-center mt-6">
+        <div className="text-center">
           <button
             onClick={() => navigate('/')}
             className="text-gray-400 hover:text-white transition-colors duration-200"

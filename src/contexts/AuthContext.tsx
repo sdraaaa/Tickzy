@@ -6,9 +6,10 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { User, onAuthStateChanged, signOut, reload } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { emailService } from '../services/emailService';
 
 // User data structure in Firestore
 export interface UserData {
@@ -17,6 +18,11 @@ export interface UserData {
   role: 'user' | 'host' | 'admin';
   isVerified: boolean;
   createdAt: Timestamp;
+  welcomeEmailSent?: boolean;
+  welcomeEmailSentAt?: Timestamp;
+  displayName?: string;
+  photoURL?: string;
+  provider?: string;
 }
 
 // Auth context interface
@@ -26,6 +32,9 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   refreshUserData: () => Promise<void>;
+  checkEmailVerification: () => Promise<boolean>;
+  isEmailVerified: () => boolean;
+  needsEmailVerification: () => boolean;
 }
 
 // Create context
@@ -62,19 +71,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
-        // User exists, return existing data
-        return userDoc.data() as UserData;
+        // User exists, check if welcome email should be sent
+        const existingData = userDoc.data() as UserData;
+
+        // Send welcome email if user is verified and hasn't received it yet
+        if (shouldSendWelcomeEmail(firebaseUser, existingData)) {
+          await sendWelcomeEmailToUser(firebaseUser, existingData);
+        }
+
+        return existingData;
       } else {
         // User doesn't exist, create new document
+        const isGoogleUser = firebaseUser.providerData?.[0]?.providerId === 'google.com';
+
         const newUserData: UserData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           role: 'user',
-          isVerified: true, // Auto-verify all users
+          isVerified: true, // Auto-verify all users in Firestore
           createdAt: Timestamp.now(),
+          displayName: firebaseUser.displayName || '',
+          photoURL: firebaseUser.photoURL || '',
+          provider: isGoogleUser ? 'google' : 'email',
+          welcomeEmailSent: false,
         };
 
         await setDoc(userDocRef, newUserData);
+
+        // Send welcome email for verified users (Google users or verified email users)
+        if (isGoogleUser || firebaseUser.emailVerified) {
+          await sendWelcomeEmailToUser(firebaseUser, newUserData);
+        }
+
         return newUserData;
       }
     } catch (error) {
@@ -82,6 +110,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setFirebaseError('Failed to access user data. Please try again later.');
       return null;
     }
+  };
+
+  // Helper function to determine if welcome email should be sent
+  const shouldSendWelcomeEmail = (firebaseUser: User, userData: UserData): boolean => {
+    const isGoogleUser = firebaseUser.providerData?.[0]?.providerId === 'google.com';
+    const isEmailVerified = firebaseUser.emailVerified;
+    const welcomeEmailNotSent = !userData.welcomeEmailSent;
+
+    return (isGoogleUser || isEmailVerified) && welcomeEmailNotSent;
+  };
+
+  // Helper function to send welcome email
+  const sendWelcomeEmailToUser = async (firebaseUser: User, userData: UserData): Promise<void> => {
+    try {
+      await emailService.sendWelcomeEmailIfNeeded(
+        firebaseUser.uid,
+        firebaseUser.email || '',
+        firebaseUser.displayName || userData.displayName || 'New User'
+      );
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+    }
+  };
+
+  // Check email verification status
+  const checkEmailVerification = async (): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      await reload(user);
+      return user.emailVerified;
+    } catch (error) {
+      console.error('Error checking email verification:', error);
+      return false;
+    }
+  };
+
+  // Check if user's email is verified
+  const isEmailVerified = (): boolean => {
+    if (!user) return false;
+
+    // Google users are automatically considered verified
+    const isGoogleUser = user.providerData?.[0]?.providerId === 'google.com';
+    return isGoogleUser || user.emailVerified;
+  };
+
+  // Check if user needs email verification
+  const needsEmailVerification = (): boolean => {
+    if (!user) return false;
+
+    // Google users don't need email verification
+    const isGoogleUser = user.providerData?.[0]?.providerId === 'google.com';
+    return !isGoogleUser && !user.emailVerified;
   };
 
   // Refresh user data function
@@ -186,6 +267,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     logout,
     refreshUserData,
+    checkEmailVerification,
+    isEmailVerified,
+    needsEmailVerification,
   };
 
   return (
