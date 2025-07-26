@@ -7,6 +7,8 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { adminLogger } from '../../services/adminLogger';
 import HostRequestReviewModal from './HostRequestReviewModal';
 
 interface HostRequest {
@@ -24,6 +26,7 @@ interface HostRequest {
 }
 
 const HostRequests: React.FC = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<HostRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -156,6 +159,17 @@ const HostRequests: React.FC = () => {
         processedBy: 'admin'
       });
 
+      // Log the approval action
+      if (user) {
+        await adminLogger.logHostRequestApproval(
+          user.uid,
+          user.email || 'admin@tickzy.com',
+          request.id,
+          request.userEmail || 'unknown@email.com',
+          request.userName
+        );
+      }
+
       // Update local state
       setRequests(requests.map(req =>
         req.id === request.id ? { ...req, status: 'approved' } : req
@@ -197,6 +211,17 @@ const HostRequests: React.FC = () => {
 
       if (!deleted) {
         throw new Error('Request not found in any collection');
+      }
+
+      // Log the rejection/deletion action
+      if (user) {
+        await adminLogger.logHostRequestDeletion(
+          user.uid,
+          user.email || 'admin@tickzy.com',
+          request.id,
+          request.userEmail || 'unknown@email.com',
+          request.userName
+        );
       }
 
       // Update local state

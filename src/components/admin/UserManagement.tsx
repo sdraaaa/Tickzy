@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { logAdminAction } from '../../services/firestore';
+import { adminLogger } from '../../services/adminLogger';
 
 interface User {
   id: string;
@@ -79,15 +79,15 @@ const UserManagement: React.FC = () => {
       });
 
       // Log admin action
-      if (currentUser) {
-        await logAdminAction(
+      if (currentUser && targetUser) {
+        await adminLogger.logUserRoleUpdate(
           currentUser.uid,
-          currentUser.email || '',
-          'Role Updated',
-          'user',
+          currentUser.email || 'admin@tickzy.com',
           userId,
-          `Changed user role from ${targetUser?.role} to ${newRole}`,
-          targetUser?.displayName || targetUser?.email
+          targetUser.email,
+          targetUser.role,
+          newRole,
+          targetUser.displayName
         );
       }
 
@@ -116,15 +116,14 @@ const UserManagement: React.FC = () => {
       });
 
       // Log admin action
-      if (currentUser) {
-        await logAdminAction(
+      if (currentUser && targetUser) {
+        await adminLogger.logUserStatusUpdate(
           currentUser.uid,
-          currentUser.email || '',
-          newStatus ? 'User Activated' : 'User Deactivated',
-          'user',
+          currentUser.email || 'admin@tickzy.com',
           userId,
-          `User account ${newStatus ? 'activated' : 'deactivated'}`,
-          targetUser?.displayName || targetUser?.email
+          targetUser.email,
+          newStatus ? 'active' : 'inactive',
+          targetUser.displayName
         );
       }
 

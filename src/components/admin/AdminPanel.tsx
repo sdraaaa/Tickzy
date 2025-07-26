@@ -146,17 +146,19 @@ const AdminPanel: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 ${
+                  className={`relative flex items-center space-x-2 py-4 px-4 border-b-2 font-medium text-sm whitespace-nowrap transition-all duration-200 ${
                     activeTab === tab.id
                       ? 'border-purple-500 text-purple-400'
                       : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
                   }`}
                 >
-                  {tab.icon}
-                  <span>{tab.name}</span>
+                  <div className="flex items-center space-x-2">
+                    {tab.icon}
+                    <span>{tab.name}</span>
+                  </div>
                   {/* Notification Badge */}
-                  {tab.count && tab.count > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] px-1">
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 shadow-lg border-2 border-black">
                       {tab.count > 99 ? '99+' : tab.count}
                     </span>
                   )}

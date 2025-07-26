@@ -7,6 +7,8 @@
 import React, { useState } from 'react';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { adminLogger } from '../../services/adminLogger';
 
 interface EventWithHost {
   id: string;
@@ -41,6 +43,7 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
   onClose,
   onStatusUpdate
 }) => {
+  const { user } = useAuth();
   const [updating, setUpdating] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionForm, setShowRejectionForm] = useState(false);
@@ -57,6 +60,17 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
         updatedAt: Timestamp.now()
       });
       
+      // Log the approval action
+      if (user) {
+        await adminLogger.logEventApproval(
+          user.uid,
+          user.email || 'admin@tickzy.com',
+          event.id,
+          event.title,
+          event.hostEmail
+        );
+      }
+
       onStatusUpdate(event.id, 'approved');
       onClose();
     } catch (error) {
@@ -82,7 +96,19 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
         statusUpdatedBy: 'admin',
         updatedAt: Timestamp.now()
       });
-      
+
+      // Log the rejection action
+      if (user) {
+        await adminLogger.logEventRejection(
+          user.uid,
+          user.email || 'admin@tickzy.com',
+          event.id,
+          event.title,
+          rejectionReason.trim(),
+          event.hostEmail
+        );
+      }
+
       onStatusUpdate(event.id, 'rejected');
       onClose();
     } catch (error) {

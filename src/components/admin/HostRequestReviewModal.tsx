@@ -7,6 +7,8 @@
 import React, { useState } from 'react';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { adminLogger } from '../../services/adminLogger';
 
 interface HostRequest {
   id: string;
@@ -35,6 +37,7 @@ const HostRequestReviewModal: React.FC<HostRequestReviewModalProps> = ({
   onClose,
   onStatusUpdate
 }) => {
+  const { user } = useAuth();
   const [updating, setUpdating] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectionForm, setShowRejectionForm] = useState(false);
@@ -68,6 +71,17 @@ const HostRequestReviewModal: React.FC<HostRequestReviewModalProps> = ({
         updatedAt: Timestamp.now()
       });
 
+      // Log the approval action
+      if (user) {
+        await adminLogger.logHostRequestApproval(
+          user.uid,
+          user.email || 'admin@tickzy.com',
+          request.id,
+          request.email || 'unknown@email.com',
+          request.displayName
+        );
+      }
+
       onStatusUpdate(request.id, 'approved');
       onClose();
 
@@ -96,7 +110,19 @@ const HostRequestReviewModal: React.FC<HostRequestReviewModalProps> = ({
         statusUpdatedBy: 'admin',
         updatedAt: Timestamp.now()
       });
-      
+
+      // Log the rejection action
+      if (user) {
+        await adminLogger.logHostRequestRejection(
+          user.uid,
+          user.email || 'admin@tickzy.com',
+          request.id,
+          request.email || 'unknown@email.com',
+          rejectionReason.trim(),
+          request.displayName
+        );
+      }
+
       onStatusUpdate(request.id, 'rejected');
       onClose();
     } catch (error) {
