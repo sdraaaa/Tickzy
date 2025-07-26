@@ -272,6 +272,36 @@ class AdminLogger {
   }
 
   /**
+   * Log complete user deletion
+   */
+  async logUserDeletion(
+    adminId: string,
+    adminEmail: string,
+    userId: string,
+    userEmail: string,
+    userRole: string,
+    userName?: string
+  ): Promise<void> {
+    await this.logAction({
+      adminId,
+      adminEmail,
+      action: 'deleted',
+      targetType: 'user',
+      targetId: userId,
+      targetName: userName || userEmail,
+      details: `User account permanently deleted: ${userName || userEmail} (${userRole}). All user data removed from system.`,
+      metadata: {
+        userEmail,
+        userName,
+        userRole,
+        deletionType: 'complete',
+        deletionReason: 'Admin action - permanent removal',
+        deletedAt: new Date().toISOString()
+      }
+    });
+  }
+
+  /**
    * Log system events (like user registration, event creation, etc.)
    */
   async logSystemEvent(

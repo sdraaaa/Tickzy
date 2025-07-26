@@ -8,10 +8,10 @@ import emailjs from '@emailjs/browser';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// EmailJS Configuration
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_tickzy';
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_welcome';
-const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'your_public_key';
+// EmailJS Configuration - Using your actual values
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_tvda6av';
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_gan12wr';
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'W3q7yQau2TSYWOSI5';
 
 // Initialize EmailJS
 emailjs.init(EMAILJS_PUBLIC_KEY);
@@ -39,23 +39,39 @@ class EmailService {
    */
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<boolean> {
     try {
-      console.log('🔄 Sending welcome email to:', data.userEmail);
 
+
+      // Try multiple email variable names - your template might expect different names
       const templateParams = {
+        // Common recipient email variable names
         to_email: data.userEmail,
-        to_name: data.userName || data.userFirstName || 'New User',
-        user_name: data.userName || data.userFirstName || 'New User',
+        email: data.userEmail,
         user_email: data.userEmail,
-        platform_name: 'Tickzy',
-        platform_url: window.location.origin,
-        support_email: 'support@tickzy.com',
-        current_year: new Date().getFullYear(),
-        // Additional template variables
-        welcome_message: `Welcome to Tickzy! We're excited to have you join our community of event enthusiasts.`,
-        next_steps: 'Start by exploring events in your area or create your own event as a host.',
-        dashboard_url: `${window.location.origin}/dashboard`,
-        explore_url: `${window.location.origin}/explore`,
+        recipient_email: data.userEmail,
+
+        // Common name variable names
+        to_name: data.userName || 'User',
+        name: data.userName || 'User',
+        user_name: data.userName || 'User',
+        recipient_name: data.userName || 'User',
+
+        // Common message variables
+        from_name: 'Tickzy',
+        message: 'Welcome to Tickzy! Thank you for joining our platform.',
+        subject: 'Welcome to Tickzy!',
+
+        // Additional common variables
+        reply_to: 'support@tickzy.com',
+        company: 'Tickzy'
       };
+
+      // Check if EmailJS is properly configured
+
+
+      if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+        console.error('❌ EmailJS not configured properly. Please check environment variables.');
+        return false;
+      }
 
       const response = await emailjs.send(
         EMAILJS_SERVICE_ID,
@@ -64,14 +80,24 @@ class EmailService {
       );
 
       if (response.status === 200) {
-        console.log('✅ Welcome email sent successfully:', response);
         return true;
       } else {
-        console.error('❌ Failed to send welcome email:', response);
+        console.error('Failed to send welcome email:', response);
         return false;
       }
-    } catch (error) {
-      console.error('❌ Error sending welcome email:', error);
+    } catch (error: any) {
+      console.error('❌ EmailJS Error Details:', {
+        error: error,
+        status: error.status,
+        text: error.text,
+        message: error.message
+      });
+
+      // Try to get more specific error info
+      if (error.text) {
+        console.error('❌ EmailJS Error Text:', error.text);
+      }
+
       return false;
     }
   }
@@ -217,29 +243,7 @@ class EmailService {
     }
   }
 
-  /**
-   * Test email configuration
-   */
-  async testEmailConfiguration(): Promise<boolean> {
-    try {
-      const testParams = {
-        to_email: 'test@example.com',
-        to_name: 'Test User',
-        message: 'This is a test email to verify EmailJS configuration.',
-      };
 
-      const response = await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        'template_test', // Test template
-        testParams
-      );
-
-      return response.status === 200;
-    } catch (error) {
-      console.error('Email configuration test failed:', error);
-      return false;
-    }
-  }
 }
 
 // Export singleton instance

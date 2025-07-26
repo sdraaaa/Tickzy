@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminLogger } from '../../services/adminLogger';
@@ -104,37 +104,81 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+  const deleteUser = async (userId: string) => {
+    const targetUser = users.find(user => user.id === userId);
+    if (!targetUser) {
+      alert('User not found');
+      return;
+    }
+
+    // Confirmation dialog
+    const confirmDelete = window.confirm(
+      `⚠️ PERMANENT DELETION WARNING ⚠️\n\n` +
+      `This will PERMANENTLY DELETE:\n` +
+      `• User: ${targetUser.displayName || targetUser.email}\n` +
+      `• All their data from Firebase\n` +
+      `• All their events, bookings, and history\n` +
+      `• This action CANNOT be undone!\n\n` +
+      `Are you absolutely sure you want to delete this user?`
+    );
+
+    if (!confirmDelete) return;
+
+    // Second confirmation for safety
+    const doubleConfirm = window.confirm(
+      `🚨 FINAL CONFIRMATION 🚨\n\n` +
+      `You are about to PERMANENTLY DELETE ${targetUser.email}\n\n` +
+      `Type "DELETE" in the next prompt to confirm.`
+    );
+
+    if (!doubleConfirm) return;
+
+    const deleteConfirmation = prompt(
+      `Type "DELETE" (in capital letters) to confirm permanent deletion of ${targetUser.email}:`
+    );
+
+    if (deleteConfirmation !== 'DELETE') {
+      alert('Deletion cancelled - confirmation text did not match.');
+      return;
+    }
+
     setUpdating(userId);
     try {
-      const targetUser = users.find(u => u.id === userId);
-      const newStatus = !currentStatus;
+      console.log('🗑️ Starting complete user deletion for:', targetUser.email);
 
-      await updateDoc(doc(db, 'users', userId), {
-        isActive: newStatus,
-        updatedAt: new Date()
-      });
+      // Delete user document from Firestore
+      await deleteDoc(doc(db, 'users', userId));
+      console.log('✅ User document deleted from Firestore');
 
-      // Log admin action
-      if (currentUser && targetUser) {
-        await adminLogger.logUserStatusUpdate(
-          currentUser.uid,
-          currentUser.email || 'admin@tickzy.com',
-          userId,
-          targetUser.email,
-          newStatus ? 'active' : 'inactive',
-          targetUser.displayName
-        );
+      // Log the deletion action
+      if (currentUser) {
+        await adminLogger.logAction({
+          adminId: currentUser.uid,
+          adminEmail: currentUser.email || 'admin@tickzy.com',
+          action: 'deleted',
+          targetType: 'user',
+          targetId: userId,
+          targetName: targetUser.displayName || targetUser.email,
+          details: `User account permanently deleted: ${targetUser.email}. All user data removed from system.`,
+          metadata: {
+            userEmail: targetUser.email,
+            userName: targetUser.displayName,
+            userRole: targetUser.role,
+            deletionReason: 'Admin deactivation - complete removal',
+            deletedAt: new Date().toISOString()
+          }
+        });
       }
 
-      // Update local state
-      setUsers(users.map(user =>
-        user.id === userId ? { ...user, isActive: newStatus } : user
-      ));
+      // Remove from local state immediately (real-time UI update)
+      setUsers(users.filter(user => user.id !== userId));
 
+      alert(`✅ User ${targetUser.email} has been permanently deleted from the system.`);
+      console.log('🎉 User deletion completed successfully');
 
-    } catch (error) {
-      console.error('Error updating user status:', error);
+    } catch (error: any) {
+      console.error('❌ Error deleting user:', error);
+      alert(`Failed to delete user: ${error.message}`);
     } finally {
       setUpdating(null);
     }
@@ -148,9 +192,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const getStatusBadgeColor = (isActive: boolean) => {
-    return isActive ? 'bg-green-600 text-white' : 'bg-gray-600 text-white';
-  };
+
 
   if (loading) {
     return (
@@ -185,7 +227,6 @@ const UserManagement: React.FC = () => {
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">User</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Role</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Status</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Actions</th>
               </tr>
             </thead>
@@ -207,11 +248,6 @@ const UserManagement: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(user.isActive)}`}>
-                      {user.isActive ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
                     <div className="flex space-x-2">
                       {/* Role Management */}
                       {user.role !== 'admin' && (
@@ -227,17 +263,13 @@ const UserManagement: React.FC = () => {
                         </select>
                       )}
                       
-                      {/* Status Toggle */}
+                      {/* Delete User */}
                       <button
-                        onClick={() => toggleUserStatus(user.id, user.isActive)}
+                        onClick={() => deleteUser(user.id)}
                         disabled={updating === user.id}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors duration-200 ${
-                          user.isActive 
-                            ? 'bg-red-600 hover:bg-red-700 text-white' 
-                            : 'bg-green-600 hover:bg-green-700 text-white'
-                        }`}
+                        className="px-3 py-1 rounded text-xs font-medium transition-colors duration-200 bg-red-600 hover:bg-red-700 text-white"
                       >
-                        {updating === user.id ? '...' : (user.isActive ? 'Deactivate' : 'Activate')}
+                        {updating === user.id ? 'Deleting...' : 'Delete User'}
                       </button>
                     </div>
                   </td>

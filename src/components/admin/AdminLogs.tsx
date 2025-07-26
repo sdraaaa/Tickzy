@@ -7,7 +7,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { adminLogger } from '../../services/adminLogger';
 
 interface AdminLog {
   id: string;
@@ -56,50 +55,9 @@ const AdminLogs: React.FC = () => {
     }
   };
 
-  const addTestLogs = async () => {
-    try {
-      // Add some test log entries
-      await adminLogger.logHostRequestApproval(
-        'test-admin-id',
-        'admin@tickzy.com',
-        'test-request-1',
-        'john.doe@example.com',
-        'John Doe'
-      );
 
-      await adminLogger.logEventApproval(
-        'test-admin-id',
-        'admin@tickzy.com',
-        'test-event-1',
-        'Summer Music Festival',
-        'host@example.com'
-      );
 
-      await adminLogger.logUserRoleUpdate(
-        'test-admin-id',
-        'admin@tickzy.com',
-        'test-user-1',
-        'jane@example.com',
-        'user',
-        'host',
-        'Jane Smith'
-      );
 
-      await adminLogger.logEventRejection(
-        'test-admin-id',
-        'admin@tickzy.com',
-        'test-event-2',
-        'Incomplete Event',
-        'Missing venue documentation',
-        'newhost@example.com'
-      );
-
-      alert('Test logs added! Click Refresh to see them.');
-    } catch (error) {
-      console.error('Error adding test logs:', error);
-      alert('Failed to add test logs. Check console for details.');
-    }
-  };
 
   const getActionIcon = (action: string) => {
     switch (action.toLowerCase()) {
@@ -165,20 +123,12 @@ const AdminLogs: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Admin Activity Logs</h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={fetchAdminLogs}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-          >
-            Refresh
-          </button>
-          <button
-            onClick={addTestLogs}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-          >
-            Add Test Logs
-          </button>
-        </div>
+        <button
+          onClick={fetchAdminLogs}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+        >
+          Refresh
+        </button>
       </div>
 
       <div className="bg-neutral-800 rounded-xl border border-gray-700">
