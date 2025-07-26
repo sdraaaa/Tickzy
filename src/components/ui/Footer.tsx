@@ -5,8 +5,11 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Footer: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <footer className="bg-neutral-900 text-white border-t border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -93,24 +96,36 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-6 text-white">Support</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <button
+                  onClick={() => navigate('/about')}
+                  className="text-gray-400 hover:text-white transition-colors duration-200"
+                >
                   About
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <button
+                  onClick={() => navigate('/contact')}
+                  className="text-gray-400 hover:text-white transition-colors duration-200"
+                >
                   Contact
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <button
+                  onClick={() => navigate('/privacy')}
+                  className="text-gray-400 hover:text-white transition-colors duration-200"
+                >
                   Privacy
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200">
+                <button
+                  onClick={() => navigate('/terms')}
+                  className="text-gray-400 hover:text-white transition-colors duration-200"
+                >
                   Terms of Service
-                </a>
+                </button>
               </li>
             </ul>
           </div>
@@ -122,15 +137,24 @@ const Footer: React.FC = () => {
             © 2024 Tickzy. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-200">
+            <button
+              onClick={() => navigate('/privacy')}
+              className="text-gray-400 hover:text-white text-sm transition-colors duration-200"
+            >
               Privacy
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-200">
+            </button>
+            <button
+              onClick={() => navigate('/terms')}
+              className="text-gray-400 hover:text-white text-sm transition-colors duration-200"
+            >
               Terms
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-200">
-              Cookies
-            </a>
+            </button>
+            <button
+              onClick={() => navigate('/contact')}
+              className="text-gray-400 hover:text-white text-sm transition-colors duration-200"
+            >
+              Contact
+            </button>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { getDefaultEventImage } from '../../utils/defaultImage';
 
 interface EventCardProps {
   title: string;
@@ -20,10 +21,13 @@ const EventCard: React.FC<EventCardProps> = ({ title, date, location, price, ima
     <div className="bg-neutral-800 rounded-xl overflow-hidden border border-gray-700 hover:border-purple-500/50 transition-all duration-300 hover:transform hover:scale-105 group">
       {/* Event Image */}
       <div className="relative h-48 overflow-hidden">
-        <img 
-          src={image} 
+        <img
+          src={image}
           alt={title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+          onError={(e) => {
+            e.currentTarget.src = getDefaultEventImage();
+          }}
         />
         <div className="absolute top-4 right-4">
           <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">

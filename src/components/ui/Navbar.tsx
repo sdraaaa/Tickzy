@@ -24,17 +24,41 @@ const Navbar: React.FC = () => {
     }
   };
 
+  const handleLogoClick = () => {
+    if (user) {
+      // If authenticated, go to dashboard and scroll to banner
+      navigate('/dashboard');
+      setTimeout(() => {
+        const heroSection = document.getElementById('hero-banner');
+        if (heroSection) {
+          heroSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      // If not authenticated, go to landing page and scroll to top
+      navigate('/');
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <div className="flex items-center">
-              <span className="text-2xl font-bold text-white tracking-wide">
+            <button
+              onClick={handleLogoClick}
+              className="flex items-center"
+            >
+              <span className="text-2xl font-bold text-white tracking-wide hover:text-purple-400 transition-colors duration-200">
                 Tickzy
               </span>
-            </div>
+            </button>
           </div>
 
           {/* Desktop Navigation */}

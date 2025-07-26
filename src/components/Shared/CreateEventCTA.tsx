@@ -24,11 +24,31 @@ const CreateEventCTA: React.FC = () => {
                 Reach thousands of potential attendees with Tickzy's powerful platform
               </p>
             </div>
-            <button 
+            <button
               onClick={() => navigate('/create-event')}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg whitespace-nowrap"
+              className="group relative bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-400 text-white font-bold px-8 py-4 rounded-xl transition-all duration-300 transform hover:scale-110 shadow-xl border-2 border-emerald-400/30 hover:border-emerald-300/50 shadow-emerald-500/25 hover:shadow-emerald-400/40 whitespace-nowrap tracking-wide"
             >
-              Create Event
+              <div className="flex items-center space-x-2">
+                <svg
+                  className="w-5 h-5 drop-shadow-sm"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Create Event</span>
+              </div>
+
+              {/* Enhanced glow effect */}
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300 bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 blur-sm"></div>
+
+              {/* Sparkle effect */}
+              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute top-2 right-2 w-1 h-1 bg-white rounded-full animate-pulse"></div>
+                <div className="absolute bottom-2 left-2 w-1 h-1 bg-white rounded-full animate-pulse delay-300"></div>
+                <div className="absolute top-1/2 left-1/2 w-0.5 h-0.5 bg-white rounded-full animate-pulse delay-150"></div>
+              </div>
             </button>
           </div>
         </div>

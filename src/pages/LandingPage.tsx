@@ -2,14 +2,13 @@
  * LandingPage Component
  *
  * Dark-themed public landing page for Tickzy platform
- * Features: Navbar, Hero Section, placeholder sections, Footer
+ * Features: Navbar, Hero Section, placeholder sections
  */
 
 import React from 'react';
 import LandingNavbar from '../components/Landing/LandingNavbar';
 import HeroSection from '../components/ui/HeroSection';
 import EventShowcase from '../components/Landing/EventShowcase';
-import Footer from '../components/ui/Footer';
 
 const LandingPage: React.FC = () => {
   return (
@@ -82,8 +81,6 @@ const LandingPage: React.FC = () => {
           {/* CTA buttons are now handled in EventShowcase component */}
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 };

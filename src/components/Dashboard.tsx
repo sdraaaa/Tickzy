@@ -6,7 +6,7 @@
  * - Admins: Admin tools only (no HeroSection or Explore Events)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -16,7 +16,7 @@ import HeroSection from './ui/HeroSection';
 import ExploreEvents from './ui/ExploreEvents';
 import UserBookings from './ui/UserBookings';
 import HostEvents from './ui/HostEvents';
-import AdminPanel from './ui/AdminPanel';
+import AdminPanel from './admin/AdminPanel';
 
 // Dashboard View Types
 type DashboardView = 'explore' | 'my-dashboard';
@@ -24,7 +24,42 @@ type DashboardView = 'explore' | 'my-dashboard';
 // Main Dashboard Component
 const Dashboard: React.FC = () => {
   const { user, userData, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<DashboardView>('explore');
+  const [currentView, setCurrentView] = useState<DashboardView | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Scroll spy functionality
+  useEffect(() => {
+    const handleScroll = () => {
+      const exploreSection = document.getElementById('explore-events');
+      const myDashboardSection = document.getElementById('my-dashboard');
+
+      if (!exploreSection || !myDashboardSection) return;
+
+      const scrollPosition = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const exploreTop = exploreSection.offsetTop - 100; // Account for navbar
+      const myDashboardTop = myDashboardSection.offsetTop - 100;
+
+      // Only highlight sections when they're actually visible and prominent
+      if (scrollPosition >= myDashboardTop) {
+        setCurrentView('my-dashboard');
+      } else if (scrollPosition >= exploreTop) {
+        setCurrentView('explore');
+      } else {
+        // When at the top (banner area), don't highlight any section
+        setCurrentView(null);
+      }
+    };
+
+    // Add scroll listener
+    window.addEventListener('scroll', handleScroll);
+
+    // Initial check
+    handleScroll();
+
+    // Cleanup
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Development role switcher
   const switchRole = async (newRole: 'user' | 'host' | 'admin') => {
@@ -39,21 +74,53 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Handle navigation between views
+  // Handle navigation between views with smooth scrolling
   const handleNavigation = (view: DashboardView) => {
     setCurrentView(view);
 
-    // Scroll to appropriate section
+    // Smooth scroll to appropriate section
     if (view === 'explore') {
       const exploreSection = document.getElementById('explore-events');
       if (exploreSection) {
-        exploreSection.scrollIntoView({ behavior: 'smooth' });
+        exploreSection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
       }
     } else if (view === 'my-dashboard') {
       const myDashboardSection = document.getElementById('my-dashboard');
       if (myDashboardSection) {
-        myDashboardSection.scrollIntoView({ behavior: 'smooth' });
+        myDashboardSection.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
       }
+    }
+  };
+
+  // Handle search from navbar
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // If searching, navigate to explore events section
+    if (query.trim()) {
+      handleNavigation('explore');
+    }
+  };
+
+  // Dev role switcher
+  const handleRoleChange = async (newRole: 'user' | 'host' | 'admin') => {
+    if (!user) return;
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        role: newRole,
+        updatedAt: new Date()
+      });
+
+      // Refresh the page to update the UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating role:', error);
     }
   };
 
@@ -72,29 +139,7 @@ const Dashboard: React.FC = () => {
   if (userData?.role === 'admin') {
     return (
       <div className="min-h-screen bg-black">
-        <UnifiedNavbar onNavigate={handleNavigation} currentView={currentView} />
-
-        {/* Role Switcher for Development */}
-        {process.env.NODE_ENV === 'development' && userData && (
-          <div className="bg-neutral-800 p-4 m-4 rounded-lg border border-yellow-600">
-            <p className="text-yellow-400 text-sm mb-2">🔧 DEV MODE - Current Role: <span className="text-purple-400 font-bold">{userData.role}</span></p>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => switchRole('user')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-              >
-                Switch to User
-              </button>
-              <button
-                onClick={() => switchRole('host')}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-              >
-                Switch to Host
-              </button>
-            </div>
-          </div>
-        )}
-
+        <UnifiedNavbar onNavigate={handleNavigation} currentView={currentView} onSearch={handleSearch} />
         <AdminPanel />
       </div>
     );
@@ -103,55 +148,21 @@ const Dashboard: React.FC = () => {
   // Users and Hosts see HeroSection + Explore Events + My Dashboard tab
   return (
     <div className="min-h-screen bg-black">
-      <UnifiedNavbar onNavigate={handleNavigation} currentView={currentView} />
-
-      {/* Role Switcher for Development */}
-      {process.env.NODE_ENV === 'development' && userData && (
-        <div className="bg-neutral-800 p-4 m-4 rounded-lg border border-yellow-600">
-          <p className="text-yellow-400 text-sm mb-2">🔧 DEV MODE - Current Role: <span className="text-purple-400 font-bold">{userData.role}</span></p>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => switchRole('user')}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-            >
-              Switch to User
-            </button>
-            <button
-              onClick={() => switchRole('host')}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-            >
-              Switch to Host
-            </button>
-            <button
-              onClick={() => switchRole('admin')}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
-            >
-              Switch to Admin
-            </button>
-          </div>
-        </div>
-      )}
+      <UnifiedNavbar onNavigate={handleNavigation} currentView={currentView} onSearch={handleSearch} />
 
       {/* HeroSection - Always shown for users and hosts */}
       <HeroSection isAuthenticated={true} showButtons={false} />
 
       {/* Explore Events Section */}
-      <ExploreEvents />
+      <section id="explore-events">
+        <ExploreEvents searchQuery={searchQuery} />
+      </section>
 
       {/* My Dashboard Section */}
-      <div id="my-dashboard">
+      <section id="my-dashboard">
         {userData?.role === 'user' && <UserBookings />}
         {userData?.role === 'host' && <HostEvents />}
-      </div>
-
-      {/* Fallback for unknown roles */}
-      {userData && !['user', 'host', 'admin'].includes(userData.role) && (
-        <div className="text-white p-8 text-center">
-          <p>Unknown role: {userData.role}</p>
-          <p>Defaulting to explore events...</p>
-          <ExploreEvents />
-        </div>
-      )}
+      </section>
     </div>
   );
 };

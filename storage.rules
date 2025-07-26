@@ -1,0 +1,86 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Tickzy
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper function to check if user is host
+    function isHost() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['host', 'admin'];
+    }
+
+    // Venue proof PDFs - temporary permissive rules for testing
+    match /venueProofs/{allPaths=**} {
+      // Any authenticated user can upload venue proof PDFs (temporary for testing)
+      allow write: if isAuthenticated() &&
+                      request.resource.contentType == 'application/pdf' &&
+                      request.resource.size <= 10 * 1024 * 1024;
+
+      // Any authenticated user can read venue proof PDFs (temporary for testing)
+      allow read: if isAuthenticated();
+
+      // Any authenticated user can delete venue proof PDFs (temporary for testing)
+      allow delete: if isAuthenticated();
+    }
+
+    // License PDFs for host applications - using correct path
+    match /licenseProofs/{allPaths=**} {
+      // Authenticated users can upload license PDFs
+      allow write: if isAuthenticated() &&
+                      request.resource.contentType == 'application/pdf' &&
+                      request.resource.size <= 10 * 1024 * 1024;
+
+      // Authenticated users can read license PDFs (for testing)
+      allow read: if isAuthenticated();
+
+      // Users can delete license PDFs
+      allow delete: if isAuthenticated();
+    }
+    
+    // Event images/banners - hosts can upload, public can read
+    match /eventImages/{eventId}/{filename} {
+      // Hosts can upload event images
+      allow write: if isHost() &&
+                      request.resource.contentType.matches('image/.*') &&
+                      request.resource.size <= 5 * 1024 * 1024; // 5MB limit for images
+      
+      // Public read access for event images
+      allow read: if true;
+      
+      // Hosts and admins can delete event images
+      allow delete: if isHost() || isAdmin();
+    }
+    
+    // Profile images - users can upload their own, public can read
+    match /profileImages/{userId}/{filename} {
+      // Users can upload their own profile images
+      allow write: if isAuthenticated() && 
+                      request.auth.uid == userId &&
+                      request.resource.contentType.matches('image/.*') &&
+                      request.resource.size <= 2 * 1024 * 1024; // 2MB limit for profile images
+      
+      // Public read access for profile images
+      allow read: if true;
+      
+      // Users can delete their own profile images
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

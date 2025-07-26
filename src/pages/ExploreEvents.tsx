@@ -1,72 +1,65 @@
 /**
  * Explore Events Page
- * 
- * Public page showing all available events with filters
+ *
+ * Public page showing all available events with filters from Firebase
  * Accessible to both authenticated and unauthenticated users
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getEvents } from '../services/firestore';
+import { Event } from '../types';
+import LandingNavbar from '../components/Landing/LandingNavbar';
 
 const ExploreEvents: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const handleBackToHome = () => {
     // Navigate to dashboard if authenticated, otherwise to landing page
     navigate(user ? '/dashboard' : '/');
   };
 
-  // Sample events data
-  const events = [
-    {
-      id: '1',
-      title: 'Summer Music Festival',
-      date: 'Dec 20, 2024',
-      time: '6:00 PM',
-      location: 'City Park',
-      price: 25,
-      category: 'music',
-      image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-      description: 'Join us for an amazing night of live music under the stars.'
-    },
-    {
-      id: '2',
-      title: 'Tech Conference 2024',
-      date: 'Dec 15, 2024',
-      time: '9:00 AM',
-      location: 'Convention Center',
-      price: 50,
-      category: 'tech',
-      image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400',
-      description: 'Learn about the latest trends in technology and innovation.'
-    },
-    {
-      id: '3',
-      title: 'Art Exhibition',
-      date: 'Dec 25, 2024',
-      time: '2:00 PM',
-      location: 'Art Gallery',
-      price: 15,
-      category: 'art',
-      image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
-      description: 'Discover contemporary art from local and international artists.'
-    }
-  ];
+  // Fetch events from Firebase
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        const fetchedEvents = await getEvents();
+        setEvents(fetchedEvents);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   const categories = [
     { id: 'all', name: 'All Events' },
     { id: 'music', name: 'Music' },
-    { id: 'tech', name: 'Technology' },
+    { id: 'technology', name: 'Technology' },
     { id: 'art', name: 'Art & Culture' },
-    { id: 'sports', name: 'Sports' }
+    { id: 'sports', name: 'Sports' },
+    { id: 'food', name: 'Food & Drink' },
+    { id: 'business', name: 'Business' },
+    { id: 'workshop', name: 'Workshops' }
   ];
 
-  const filteredEvents = selectedCategory === 'all' 
-    ? events 
-    : events.filter(event => event.category === selectedCategory);
+  const filteredEvents = selectedCategory === 'all'
+    ? events
+    : events.filter(event =>
+        event.tags && event.tags.some(tag =>
+          tag.toLowerCase().includes(selectedCategory.toLowerCase())
+        )
+      );
 
   const handleBookEvent = (eventId: string) => {
     if (!user) {
@@ -81,6 +74,9 @@ const ExploreEvents: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      {/* Navigation */}
+      <LandingNavbar />
+
       {/* Header */}
       <div className="bg-neutral-900 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -118,10 +114,22 @@ const ExploreEvents: React.FC = () => {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+          <div className="flex justify-center items-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+            <span className="ml-4 text-white">Loading events...</span>
+          </div>
+        </div>
+      )}
+
       {/* Events Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredEvents.map((event) => (
+      {!loading && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+          {filteredEvents.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredEvents.map((event) => (
             <div key={event.id} className="bg-neutral-800 rounded-xl overflow-hidden border border-gray-700 hover:border-purple-500/50 transition-all duration-300">
               <div className="relative h-48">
                 <img
@@ -140,12 +148,28 @@ const ExploreEvents: React.FC = () => {
                 <h3 className="text-xl font-semibold text-white mb-2">{event.title}</h3>
                 <p className="text-gray-400 text-sm mb-4">{event.description}</p>
 
+                {/* Tags */}
+                {event.tags && event.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {event.tags.slice(0, 3).map((tag, index) => (
+                      <span key={index} className="bg-purple-600/20 text-purple-300 px-2 py-1 rounded-full text-xs">
+                        {tag}
+                      </span>
+                    ))}
+                    {event.tags.length > 3 && (
+                      <span className="text-gray-400 text-xs px-2 py-1">
+                        +{event.tags.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center text-gray-400 text-sm">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    {event.date} at {event.time}
+                    {new Date(event.date).toLocaleDateString()} at {event.time}
                   </div>
                   <div className="flex items-center text-gray-400 text-sm">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,20 +189,35 @@ const ExploreEvents: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
-
-        {filteredEvents.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">No Events Found</h3>
-            <p className="text-gray-400">Try selecting a different category.</p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                {events.length === 0 ? 'No Events Available' : 'No Events Found'}
+              </h3>
+              <p className="text-gray-400">
+                {events.length === 0
+                  ? 'There are currently no events to display. Check back soon for exciting new events!'
+                  : 'Try selecting a different category or check back later.'
+                }
+              </p>
+              {events.length === 0 && (
+                <button
+                  onClick={() => navigate('/login')}
+                  className="mt-6 bg-purple-600 hover:bg-purple-700 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-200"
+                >
+                  Sign Up to Create Events
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

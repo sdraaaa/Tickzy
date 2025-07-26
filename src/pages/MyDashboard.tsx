@@ -203,27 +203,7 @@ const MyDashboard: React.FC = () => {
           <p className="text-gray-400">Manage your events and create amazing experiences</p>
         </div>
 
-        {/* Create New Event CTA */}
-        <section className="mb-8">
-          <div className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 rounded-2xl p-8 border border-purple-500/20">
-            <div className="flex flex-col md:flex-row items-center justify-between">
-              <div className="mb-6 md:mb-0">
-                <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                  Ready to create your next event?
-                </h3>
-                <p className="text-purple-200 text-lg">
-                  Reach thousands of potential attendees with Tickzy's powerful platform
-                </p>
-              </div>
-              <button
-                onClick={() => navigate('/create-event')}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg whitespace-nowrap"
-              >
-                Create New Event
-              </button>
-            </div>
-          </div>
-        </section>
+
 
         {/* My Events */}
         <section>
@@ -294,21 +274,7 @@ const MyDashboard: React.FC = () => {
               </div>
             ))}
 
-            {/* Add Event Card */}
-            <div className="bg-neutral-800 rounded-xl border-2 border-dashed border-gray-600 hover:border-purple-500 transition-all duration-300 flex items-center justify-center h-64">
-              <button
-                onClick={() => navigate('/create-event')}
-                className="text-center p-6"
-              >
-                <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </div>
-                <h4 className="text-lg font-semibold text-white mb-2">Create New Event</h4>
-                <p className="text-gray-400 text-sm">Start planning your next amazing event</p>
-              </button>
-            </div>
+
           </div>
         </section>
       </div>

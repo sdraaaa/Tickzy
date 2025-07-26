@@ -16,8 +16,25 @@ const LandingNavbar: React.FC = () => {
   const { user } = useAuth();
 
   const handleLogoClick = () => {
-    // Navigate to dashboard if authenticated, otherwise to landing page
-    navigate(user ? '/dashboard' : '/');
+    if (user) {
+      // If authenticated, go to dashboard and scroll to banner
+      navigate('/dashboard');
+      // Small delay to ensure navigation completes before scrolling
+      setTimeout(() => {
+        const heroSection = document.getElementById('hero-banner');
+        if (heroSection) {
+          heroSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      // If not authenticated, go to landing page and scroll to top
+      navigate('/');
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+    }
   };
 
   return (

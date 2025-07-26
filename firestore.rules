@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users collection - users can read/write their own data, admins can access all
+    match /users/{userId} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == userId || isAdmin()
+      );
+    }
+
+    // Events collection - public read with PDF restrictions
+    match /events/{eventId} {
+      // Public can read basic event data (excluding venueProofPDF)
+      allow read: if true;
+
+      // Hosts can create events with venueProofPDF
+      allow create: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'host'];
+
+      // Hosts can update their own events (excluding venueProofPDF field)
+      allow update: if request.auth != null &&
+        resource.data.hostId == request.auth.uid &&
+        !('venueProofPDF' in request.resource.data.diff(resource.data).affectedKeys());
+
+      // Admins can read all fields including venueProofPDF and update/delete any event
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Host requests - multiple collection names support with PDF restrictions
+    match /hostRequests/{requestId} {
+      // Users can create host requests with licensePDF
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      // Users can read their own requests (excluding licensePDF field)
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+
+      // Admins can read all fields including licensePDF and update/delete any request
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /host_requests/{requestId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    match /hostApplications/{requestId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    match /host_applications/{requestId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    match /requests/{requestId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    match /applications/{requestId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read, update, delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Admin logs - only admins can access
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Bookings - users can access their own, admins can access all
+    match /bookings/{bookingId} {
+      allow read, write: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Notifications - users can access their own, admins can access all
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Temporary: Allow admin to read any collection for debugging
+    match /{collection}/{document} {
+      allow read: if isAdmin();
+    }
+  }
+}

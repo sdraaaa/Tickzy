@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Firebase configuration with fallback values for production
 const firebaseConfig = {
@@ -16,30 +17,36 @@ const firebaseConfig = {
 let app;
 let auth;
 let db;
+let storage;
 let provider;
 
 try {
-  // Log configuration for debugging (without sensitive data)
-  console.log('Initializing Firebase with project:', firebaseConfig.projectId);
+
 
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
 
-  // Configure Google Auth Provider to avoid CORS issues
+  // Configure Google Auth Provider with better popup handling
   provider = new GoogleAuthProvider();
   provider.setCustomParameters({
     prompt: 'select_account'
   });
 
-  console.log('Firebase initialized successfully');
+  // Add scopes for better user info
+  provider.addScope('email');
+  provider.addScope('profile');
+
+
 } catch (error) {
   console.error('Firebase initialization error:', error);
 
   // Create mock implementations for development/fallback
   auth = null;
   db = null;
+  storage = null;
   provider = null;
 }
 
-export { auth, db, provider };
+export { auth, db, storage, provider };

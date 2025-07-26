@@ -24,17 +24,17 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   const { user } = useAuth();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section id="hero-banner" className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image - Concert crowd with stage lights */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=2070&auto=format&fit=crop)'
+          backgroundImage: 'url(https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)'
         }}
       ></div>
 
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/70"></div>
+      {/* Dark Overlay for text readability */}
+      <div className="absolute inset-0 bg-black/60"></div>
 
       {/* Content */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

@@ -1,84 +1,39 @@
 /**
  * EventShowcase Component
- * 
- * Displays dummy event cards on the landing page
+ *
+ * Displays real events from Firebase on the landing page
  * Booking attempts trigger login redirect for unauthenticated users
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EventCard from '../ui/EventCard';
-
-interface Event {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  price: string;
-  image: string;
-  category?: string;
-}
+import { getEvents } from '../../services/firestore';
+import { Event } from '../../types';
 
 const EventShowcase: React.FC = () => {
   const navigate = useNavigate();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample events for public display
-  const showcaseEvents: Event[] = [
-    {
-      id: '1',
-      title: 'Tech Conference 2024',
-      date: 'Dec 15, 2024',
-      location: 'Convention Center',
-      price: '$99',
-      image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400',
-      category: 'Technology'
-    },
-    {
-      id: '2',
-      title: 'Summer Music Festival',
-      date: 'Dec 20, 2024',
-      location: 'City Park',
-      price: '$75',
-      image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-      category: 'Music'
-    },
-    {
-      id: '3',
-      title: 'Art & Design Workshop',
-      date: 'Dec 25, 2024',
-      location: 'Art Studio',
-      price: '$45',
-      image: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400',
-      category: 'Workshop'
-    },
-    {
-      id: '4',
-      title: 'Food Festival',
-      date: 'Dec 30, 2024',
-      location: 'Downtown Square',
-      price: '$25',
-      image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400',
-      category: 'Food'
-    },
-    {
-      id: '5',
-      title: 'Comedy Night',
-      date: 'Jan 5, 2025',
-      location: 'Comedy Club',
-      price: '$35',
-      image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
-      category: 'Comedy'
-    },
-    {
-      id: '6',
-      title: 'Startup Pitch Event',
-      date: 'Jan 10, 2025',
-      location: 'Business Center',
-      price: '$50',
-      image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400',
-      category: 'Business'
-    }
-  ];
+  // Fetch real events from Firebase
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        const fetchedEvents = await getEvents();
+        // Limit to 6 events for the landing page showcase
+        setEvents(fetchedEvents.slice(0, 6));
+      } catch (error) {
+        console.error('Error fetching events for landing page:', error);
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   const handleEventClick = () => {
     // Redirect to login when trying to book an event
@@ -98,20 +53,51 @@ const EventShowcase: React.FC = () => {
           </p>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-16 mb-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+            <span className="ml-4 text-white">Loading events...</span>
+          </div>
+        )}
+
         {/* Featured Events Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {showcaseEvents.slice(0, 6).map((event) => (
-            <div key={event.id} onClick={handleEventClick} className="cursor-pointer">
-              <EventCard
-                title={event.title}
-                date={event.date}
-                location={event.location}
-                price={event.price}
-                image={event.image}
-              />
+        {!loading && events.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            {events.map((event) => (
+              <div key={event.id} onClick={handleEventClick} className="cursor-pointer">
+                <EventCard
+                  title={event.title}
+                  date={new Date(event.date).toLocaleDateString()}
+                  location={event.location}
+                  price={`$${event.price}`}
+                  image={event.image}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && events.length === 0 && (
+          <div className="text-center py-16 mb-12">
+            <div className="w-20 h-20 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
-          ))}
-        </div>
+            <h3 className="text-2xl font-semibold text-white mb-4">No Events Available</h3>
+            <p className="text-gray-400 mb-8 max-w-md mx-auto">
+              There are currently no events to display. Check back soon for exciting new events!
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-200"
+            >
+              Sign Up to Create Events
+            </button>
+          </div>
+        )}
 
         {/* Categories Section */}
         <div className="text-center mb-12">

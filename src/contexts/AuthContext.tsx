@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 // User data structure in Firestore
@@ -25,6 +25,7 @@ interface AuthContextType {
   userData: UserData | null;
   loading: boolean;
   logout: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
 }
 
 // Create context
@@ -83,6 +84,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Refresh user data function
+  const refreshUserData = async (): Promise<void> => {
+    if (!user) return;
+
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUserData(userDoc.data() as UserData);
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
   // Logout function
   const logout = async (): Promise<void> => {
     if (!auth) {
@@ -109,9 +126,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let userDocUnsubscribe: (() => void) | null = null;
+
+    const authUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       setFirebaseError(null);
+
+      // Clean up previous user document listener
+      if (userDocUnsubscribe) {
+        userDocUnsubscribe();
+        userDocUnsubscribe = null;
+      }
 
       try {
         if (firebaseUser) {
@@ -121,6 +146,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Get or create user document in Firestore
           const userDoc = await createOrGetUserDocument(firebaseUser);
           setUserData(userDoc);
+
+          // Set up real-time listener for user document changes
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          userDocUnsubscribe = onSnapshot(userDocRef, (doc) => {
+            if (doc.exists()) {
+              setUserData(doc.data() as UserData);
+            }
+          }, (error) => {
+            console.error('Error listening to user document:', error);
+          });
         } else {
           // User is signed out
           setUser(null);
@@ -136,8 +171,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    // Cleanup subscriptions on unmount
+    return () => {
+      authUnsubscribe();
+      if (userDocUnsubscribe) {
+        userDocUnsubscribe();
+      }
+    };
   }, []);
 
   const value: AuthContextType = {
@@ -145,6 +185,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userData,
     loading,
     logout,
+    refreshUserData,
   };
 
   return (

@@ -10,6 +10,7 @@ import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth, provider } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import LandingNavbar from '../components/Landing/LandingNavbar';
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ const Login: React.FC = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      console.log('User signed in:', user.email);
+
 
       // The AuthContext will handle creating/getting the user document
       // and the useEffect above will handle redirection
@@ -72,7 +73,11 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-black">
+      {/* Navigation */}
+      <LandingNavbar />
+
+      <div className="flex items-center justify-center px-4 pt-16 pb-8 min-h-screen">
       <div className="max-w-md w-full">
         {/* Login Card */}
         <div className="bg-neutral-900 rounded-xl shadow-2xl p-8 border border-gray-800">
@@ -150,6 +155,7 @@ const Login: React.FC = () => {
           >
             ← Back to Home
           </button>
+        </div>
         </div>
       </div>
     </div>

@@ -14,29 +14,18 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import ExploreEvents from './pages/ExploreEvents';
 import Dashboard from './components/Dashboard';
+import CreateEvent from './pages/CreateEvent';
+import RequestHost from './pages/RequestHost';
+import Footer from './components/ui/Footer';
 
 const App: React.FC = () => {
   const location = useLocation();
 
-  useEffect(() => {
-    console.log('App mounted, current location:', location.pathname);
-    console.log('Window location:', window.location.href);
-    console.log('Environment:', {
-      hostname: window.location.hostname,
-      pathname: window.location.pathname,
-      search: window.location.search,
-      hash: window.location.hash
-    });
-  }, [location]);
+
 
   return (
     <AuthProvider>
       <div className="min-h-screen bg-black">
-        {/* Debug indicator */}
-        <div className="fixed top-4 left-4 bg-green-600 text-white px-2 py-1 rounded text-xs z-50">
-          App Loaded ✓
-        </div>
-
         <Routes>
         {/* Landing page - redirect authenticated users to dashboard */}
         <Route path="/" element={
@@ -61,7 +50,24 @@ const App: React.FC = () => {
             <Dashboard />
           </ProtectedRoute>
         } />
+
+        {/* Create Event - only for hosts */}
+        <Route path="/create-event" element={
+          <ProtectedRoute>
+            <CreateEvent />
+          </ProtectedRoute>
+        } />
+
+        {/* Request Host - only for users */}
+        <Route path="/request-host" element={
+          <ProtectedRoute>
+            <RequestHost />
+          </ProtectedRoute>
+        } />
       </Routes>
+
+        {/* Footer on all pages */}
+        <Footer />
       </div>
     </AuthProvider>
   );
