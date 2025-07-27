@@ -10,6 +10,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUserBookings } from '../../services/firestore';
 import { Booking } from '../../types';
 import TicketModal from './TicketModal';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 const UserBookings: React.FC = () => {
   const { user } = useAuth();
@@ -19,24 +21,53 @@ const UserBookings: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
 
-  // Fetch user bookings from Firestore
+  // Real-time listener for user bookings
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (!user) return;
+    if (!user || !db) {
+      setBookings([]);
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      try {
-        const userBookings = await getUserBookings(user.uid);
+    setLoading(true);
+
+    // Set up real-time listener for user's bookings
+    const bookingsQuery = query(
+      collection(db, 'bookings'),
+      where('userId', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      bookingsQuery,
+      (snapshot) => {
+        const userBookings: Booking[] = [];
+        snapshot.forEach((doc) => {
+          userBookings.push({
+            id: doc.id,
+            ...doc.data()
+          } as Booking);
+        });
+
+        // Sort by creation date (newest first)
+        userBookings.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || 0;
+          const bTime = b.createdAt?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
+
         setBookings(userBookings);
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
+        setLoading(false);
+        console.log('📊 Real-time bookings update:', userBookings.length, 'bookings');
+      },
+      (error) => {
+        console.error('Error listening to bookings:', error);
         setBookings([]);
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchBookings();
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, [user]);
 
   // Filter bookings by tab
@@ -54,18 +85,22 @@ const UserBookings: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed': return 'bg-green-900/50 text-green-300 border-green-700';
+      case 'confirmed':
+      case 'booked': return 'bg-green-900/50 text-green-300 border-green-700';
       case 'pending': return 'bg-yellow-900/50 text-yellow-300 border-yellow-700';
       case 'attended': return 'bg-blue-900/50 text-blue-300 border-blue-700';
+      case 'cancelled': return 'bg-red-900/50 text-red-300 border-red-700';
       default: return 'bg-gray-900/50 text-gray-300 border-gray-700';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'confirmed': return '✓';
+      case 'confirmed':
+      case 'booked': return '✓';
       case 'pending': return '⏳';
       case 'attended': return '🎉';
+      case 'cancelled': return '❌';
       default: return '?';
     }
   };
@@ -175,7 +210,7 @@ const UserBookings: React.FC = () => {
                     </div>
 
                     <div className="flex space-x-2">
-                      {booking.status === 'confirmed' && (
+                      {(booking.status === 'confirmed' || booking.status === 'booked') && (
                         <button
                           onClick={() => handleViewTicket(booking)}
                           className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 text-sm"

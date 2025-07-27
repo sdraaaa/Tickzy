@@ -18,9 +18,11 @@ export interface Event {
   image: string;
   hostId: string;
   hostName: string;
-  status: 'draft' | 'published' | 'cancelled' | 'completed';
+  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'pending' | 'rejected';
   totalTickets: number;
   ticketsSold: number;
+  seatsLeft: number; // Available seats for booking
+  capacity: number; // Total capacity (same as totalTickets)
   revenue: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -30,6 +32,8 @@ export interface Event {
 export interface Booking {
   id: string;
   userId: string;
+  userEmail: string;
+  userName: string;
   eventId: string;
   eventTitle: string;
   eventDate: string;
@@ -39,9 +43,10 @@ export interface Booking {
   ticketCount: number;
   ticketTier: 'regular' | 'vip' | 'premium';
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'attended';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'attended' | 'booked';
   bookingDate: string;
-  qrCode?: string; // Generated QR code for ticket
+  qrCode: string; // Generated QR code for ticket (base64 or data URL)
+  qrCodeData: string; // QR code text data
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

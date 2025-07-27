@@ -28,6 +28,14 @@ service cloud.firestore {
         resource.data.hostId == request.auth.uid &&
         !('venueProofPDF' in request.resource.data.diff(resource.data).affectedKeys());
 
+      // Allow booking-related updates (seatsLeft, ticketsSold, revenue) for authenticated users
+      allow update: if request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seatsLeft', 'ticketsSold', 'revenue', 'updatedAt']);
+
+      // Allow migration updates (seatsLeft, capacity, totalTickets) for authenticated users
+      allow update: if request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seatsLeft', 'capacity', 'totalTickets', 'updatedAt']);
+
       // Admins can read all fields including venueProofPDF and update/delete any event
       allow read, update, delete: if isAdmin();
     }
@@ -86,7 +94,12 @@ service cloud.firestore {
 
     // Bookings - users can access their own, admins can access all
     match /bookings/{bookingId} {
-      allow read, write: if request.auth != null && (
+      // Allow users to create bookings for themselves
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Allow users to read/update their own bookings, admins can access all
+      allow read, update, delete: if request.auth != null && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
     }

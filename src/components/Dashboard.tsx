@@ -9,14 +9,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { UserData } from '../contexts/AuthContext';
 import UnifiedNavbar from './ui/UnifiedNavbar';
 import HeroSection from './ui/HeroSection';
 import ExploreEvents from './ui/ExploreEvents';
 import UserBookings from './ui/UserBookings';
 import HostEvents from './ui/HostEvents';
 import AdminPanel from './admin/AdminPanel';
+
 
 // Dashboard View Types
 type DashboardView = 'explore' | 'my-dashboard';
@@ -60,6 +62,8 @@ const Dashboard: React.FC = () => {
     // Cleanup
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+
 
   // Development role switcher
   const switchRole = async (newRole: 'user' | 'host' | 'admin') => {

@@ -43,23 +43,43 @@ const HostEvents: React.FC = () => {
   const pendingStatuses = ['pending', 'draft', 'submitted', 'under_review'];
   const activeStatuses = ['approved', 'published', 'active', 'live', 'open'];
 
-  // Active events: be very inclusive - anything that's not explicitly past or pending
+  // Helper function to check if event date has passed
+  const isEventDatePast = (eventDate: string): boolean => {
+    const eventDateObj = new Date(eventDate);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+    return eventDateObj < now;
+  };
+
+  // Active events: not past by status AND not past by date AND not pending
   const activeEvents = events.filter(event => {
     const status = event.status?.toLowerCase() || '';
-    const isPast = pastStatuses.some(s => s.toLowerCase() === status);
+    const isPastByStatus = pastStatuses.some(s => s.toLowerCase() === status);
+    const isPastByDate = isEventDatePast(event.date);
     const isPending = pendingStatuses.some(s => s.toLowerCase() === status);
-    return !isPast && !isPending;
+
+    // Event is active if it's not past (by status OR date) and not pending
+    return !isPastByStatus && !isPastByDate && !isPending;
   });
 
-  // Pending events: pending, draft (events waiting for approval)
-  const pendingEvents = events.filter(event =>
-    pendingStatuses.includes(event.status)
-  );
+  // Pending events: pending, draft (events waiting for approval) AND not past by date
+  const pendingEvents = events.filter(event => {
+    const isPastByDate = isEventDatePast(event.date);
+    const isPending = pendingStatuses.includes(event.status);
 
-  // Past events: completed, ended, cancelled, expired, rejected
-  const pastEvents = events.filter(event =>
-    pastStatuses.includes(event.status)
-  );
+    // Event is pending if it has pending status AND date hasn't passed
+    return isPending && !isPastByDate;
+  });
+
+  // Past events: past by status OR past by date
+  const pastEvents = events.filter(event => {
+    const status = event.status?.toLowerCase() || '';
+    const isPastByStatus = pastStatuses.some(s => s.toLowerCase() === status);
+    const isPastByDate = isEventDatePast(event.date);
+
+    // Event is past if it's past by status OR past by date
+    return isPastByStatus || isPastByDate;
+  });
 
 
 
@@ -248,9 +268,18 @@ const HostEvents: React.FC = () => {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-3 right-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(event.status)}`}>
-                      {getStatusIcon(event.status)} {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                    </span>
+                    {(() => {
+                      const isPastByDate = isEventDatePast(event.date);
+                      const displayStatus = isPastByDate ? 'Event Ended' : event.status.charAt(0).toUpperCase() + event.status.slice(1);
+                      const statusColor = isPastByDate ? 'bg-red-600/20 text-red-400 border-red-600/30' : getStatusColor(event.status);
+                      const statusIcon = isPastByDate ? '🏁' : getStatusIcon(event.status);
+
+                      return (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
+                          {statusIcon} {displayStatus}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
 

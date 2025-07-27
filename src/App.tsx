@@ -17,6 +17,7 @@ import Dashboard from './components/Dashboard';
 import CreateEvent from './pages/CreateEvent';
 import RequestHost from './pages/RequestHost';
 import VerifyEmail from './pages/VerifyEmail';
+import TicketVerification from './pages/TicketVerification';
 import Footer from './components/ui/Footer';
 
 const App: React.FC = () => {
@@ -47,6 +48,9 @@ const App: React.FC = () => {
 
         {/* Explore events - accessible to all users */}
         <Route path="/explore-events" element={<ExploreEvents />} />
+
+        {/* Ticket verification - accessible to all users */}
+        <Route path="/ticket/:bookingId" element={<TicketVerification />} />
 
         {/* Dashboard - unified route for all authenticated users */}
         <Route path="/dashboard" element={

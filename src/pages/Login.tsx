@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { signInWithPopup, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, getRedirectResult } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, provider } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,17 +22,27 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { user, userData, needsEmailVerification } = useAuth();
 
-  // Redirect logic based on authentication and verification status
+  // Handle redirect result from Google Sign-In
   useEffect(() => {
-    if (user && userData) {
-      // Check if user needs email verification
-      if (needsEmailVerification()) {
-        navigate('/verify-email');
-      } else {
-        navigate('/dashboard');
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // User signed in via redirect
+          console.log('Redirect sign-in successful:', result.user.email);
+          // The AuthContext will handle the rest
+        }
+      } catch (error: any) {
+        console.error('Error handling redirect result:', error);
+        setError('Sign-in failed. Please try again.');
       }
-    }
-  }, [user, userData, navigate, needsEmailVerification]);
+    };
+
+    handleRedirectResult();
+  }, []);
+
+  // Note: Redirect logic is handled by AuthRedirect component in App.tsx
+  // This prevents conflicts and loops
 
   // Handle email/password sign in
   const handleEmailSignIn = async (e: React.FormEvent) => {
@@ -126,42 +136,50 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
+      // Use popup method (more reliable and faster)
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
-
+      console.log('Google sign-in successful:', user.email);
 
       // The AuthContext will handle creating/getting the user document
       // and the useEffect above will handle redirection
 
-    } catch (error: any) {
-      console.error('Error signing in with Google:', error);
+    } catch (popupError: any) {
+      console.error('Popup sign-in failed:', popupError);
 
-      // Handle specific error cases
-      if (error.code === 'auth/popup-closed-by-user') {
+      // Handle specific popup error cases
+      if (popupError.code === 'auth/popup-closed-by-user') {
         setError('Sign-in was cancelled. Please try again.');
-      } else if (error.code === 'auth/popup-blocked') {
-        setError('Pop-up was blocked. Trying redirect method...');
+      } else if (popupError.code === 'auth/popup-blocked') {
+        setError('Popup was blocked. Trying redirect method...');
+
         // Fallback to redirect method
         try {
           await signInWithRedirect(auth, provider);
-          return; // Don't set loading to false as redirect will reload the page
+          // Redirect will reload the page, so we don't set loading to false
+          return;
         } catch (redirectError) {
           console.error('Redirect sign-in also failed:', redirectError);
           setError('Failed to sign in. Please try again.');
         }
-      } else if (error.message?.includes('Cross-Origin-Opener-Policy')) {
-        setError('Browser security settings are blocking sign-in. Trying redirect method...');
-        // Fallback to redirect method for CORS issues
-        try {
-          await signInWithRedirect(auth, provider);
-          return; // Don't set loading to false as redirect will reload the page
-        } catch (redirectError) {
-          console.error('Redirect sign-in also failed:', redirectError);
-          setError('Failed to sign in. Please try again.');
-        }
+      } else if (popupError.code === 'auth/cancelled-popup-request') {
+        setError('Another sign-in popup is already open. Please close it and try again.');
+      } else if (popupError.code === 'auth/network-request-failed') {
+        setError('Network error. Please check your connection and try again.');
       } else {
-        setError('Failed to sign in. Please try again.');
+        // Don't show COOP errors to user, just fallback to redirect
+        if (popupError.message?.includes('Cross-Origin-Opener-Policy')) {
+          console.warn('COOP warning detected (non-critical), falling back to redirect...');
+          try {
+            await signInWithRedirect(auth, provider);
+            return;
+          } catch (redirectError) {
+            console.error('Redirect sign-in also failed:', redirectError);
+            setError('Failed to sign in. Please try again.');
+          }
+        } else {
+          setError('Failed to sign in. Please try again.');
+        }
       }
     } finally {
       setLoading(false);

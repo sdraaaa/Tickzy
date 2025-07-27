@@ -31,7 +31,9 @@ try {
   // Configure Google Auth Provider with better popup handling
   provider = new GoogleAuthProvider();
   provider.setCustomParameters({
-    prompt: 'select_account'
+    prompt: 'select_account',
+    // Add parameters to help with COOP issues
+    hd: undefined // Allow any domain
   });
 
   // Add scopes for better user info

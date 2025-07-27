@@ -6,7 +6,6 @@
 
 import React from 'react';
 import { Booking } from '../../types';
-import { generateQRCode } from '../../services/firestore';
 
 interface TicketModalProps {
   booking: Booking | null;
@@ -16,8 +15,6 @@ interface TicketModalProps {
 
 const TicketModal: React.FC<TicketModalProps> = ({ booking, isOpen, onClose }) => {
   if (!isOpen || !booking) return null;
-
-  const qrCodeData = generateQRCode(booking.id, booking.eventId);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -87,24 +84,24 @@ const TicketModal: React.FC<TicketModalProps> = ({ booking, isOpen, onClose }) =
 
           {/* QR Code */}
           <div className="bg-white rounded-lg p-6 text-center">
-            <div className="w-32 h-32 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-              {/* Simple QR Code placeholder - in production, use a QR code library */}
-              <div className="grid grid-cols-8 gap-1">
-                {Array.from({ length: 64 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`w-1 h-1 ${
-                      Math.random() > 0.5 ? 'bg-black' : 'bg-white'
-                    }`}
-                  />
-                ))}
-              </div>
+            <div className="w-48 h-48 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+              {booking.qrCode ? (
+                <img
+                  src={booking.qrCode}
+                  alt="Ticket QR Code"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="text-gray-500 text-sm">
+                  QR Code not available
+                </div>
+              )}
             </div>
             <p className="text-gray-600 text-sm">
               Show this QR code at the venue entrance
             </p>
-            <p className="text-gray-500 text-xs mt-1">
-              {qrCodeData}
+            <p className="text-gray-500 text-xs mt-1 break-all">
+              {booking.qrCodeData || booking.id}
             </p>
           </div>
 

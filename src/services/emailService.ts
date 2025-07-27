@@ -11,6 +11,7 @@ import { db } from '../firebase';
 // EmailJS Configuration - Using your actual values
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_tvda6av';
 const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_gan12wr';
+const EMAILJS_BOOKING_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_BOOKING_TEMPLATE_ID || 'template_booking_confirmation';
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'W3q7yQau2TSYWOSI5';
 
 // Initialize EmailJS
@@ -20,6 +21,19 @@ export interface WelcomeEmailData {
   userEmail: string;
   userName: string;
   userFirstName?: string;
+}
+
+export interface BookingConfirmationEmailData {
+  userEmail: string;
+  userName: string;
+  eventTitle: string;
+  eventDate: string;
+  eventTime: string;
+  eventLocation: string;
+  bookingId: string;
+  totalAmount: number;
+  ticketCount: number;
+  qrCode?: string; // Base64 QR code image
 }
 
 class EmailService {
@@ -239,6 +253,94 @@ class EmailService {
       return response.status === 200;
     } catch (error) {
       console.error('Error sending host approval notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send booking confirmation email with QR code
+   */
+  async sendBookingConfirmationEmail(data: BookingConfirmationEmailData): Promise<boolean> {
+    try {
+      if (!EMAILJS_SERVICE_ID || !EMAILJS_BOOKING_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+        console.error('❌ EmailJS not configured properly for booking confirmation.');
+        return false;
+      }
+
+      // Validate email data
+      if (!data.userEmail || !data.userName) {
+        console.error('❌ Missing required email data:', { userEmail: data.userEmail, userName: data.userName });
+        return false;
+      }
+
+      const templateParams = {
+        // Multiple email field formats for compatibility
+        to_email: data.userEmail,
+        email: data.userEmail,
+        user_email: data.userEmail,
+        recipient_email: data.userEmail,
+
+        // Multiple name field formats for compatibility
+        to_name: data.userName,
+        name: data.userName,
+        user_name: data.userName,
+        recipient_name: data.userName,
+
+        // Event information
+        event_title: data.eventTitle,
+        event_name: data.eventTitle,
+        event_date: data.eventDate,
+        event_time: data.eventTime,
+        event_location: data.eventLocation,
+        event_venue: data.eventLocation,
+
+        // Booking information
+        booking_id: data.bookingId,
+        ticket_count: String(data.ticketCount),
+        total_amount: String(data.totalAmount),
+        total_price: `$${data.totalAmount}`,
+
+        // QR Code (if available)
+        qr_code: data.qrCode || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+
+        // Platform information
+        from_name: 'Tickzy',
+        platform_name: 'Tickzy',
+        company: 'Tickzy',
+        subject: `Booking Confirmation - ${data.eventTitle}`,
+        message: `Your booking for ${data.eventTitle} has been confirmed! Booking ID: ${data.bookingId}`,
+
+        // URLs and support
+        dashboard_url: 'http://localhost:3000/dashboard',
+        support_email: 'support@tickzy.com',
+        reply_to: 'support@tickzy.com'
+      };
+
+      console.log('📧 Sending booking confirmation email to:', data.userEmail);
+      console.log('📧 QR Code data length:', data.qrCode?.length || 0);
+      console.log('📧 QR Code preview:', data.qrCode?.substring(0, 100) + '...');
+      console.log('📧 Template params:', templateParams);
+
+      const response = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_BOOKING_TEMPLATE_ID, // Using dedicated booking confirmation template
+        templateParams
+      );
+
+      if (response.status === 200) {
+        console.log('✅ Booking confirmation email sent successfully');
+        return true;
+      } else {
+        console.error('❌ Failed to send booking confirmation email:', response);
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ EmailJS Booking Confirmation Error:', {
+        error: error,
+        status: error.status,
+        text: error.text,
+        message: error.message
+      });
       return false;
     }
   }

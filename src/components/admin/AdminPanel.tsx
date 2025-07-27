@@ -9,9 +9,11 @@ import UserManagement from './UserManagement';
 import EventManagement from './EventManagement';
 import HostRequests from './HostRequests';
 import AdminLogs from './AdminLogs';
+
 import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
+
 
 
 type AdminTab = 'users' | 'events' | 'requests' | 'logs';
@@ -232,6 +234,8 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
         </div>
+
+
       </div>
     </section>
   );

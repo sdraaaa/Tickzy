@@ -17,11 +17,14 @@ import {
   startAfter,
   Timestamp,
   QueryDocumentSnapshot,
-  DocumentData
+  DocumentData,
+  runTransaction,
+  increment
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Event, Booking, Notification, SearchFilters, PaginatedResponse } from '../types';
 import { getDefaultEventImage } from '../utils/defaultImage';
+import QRCode from 'qrcode';
 
 // Events
 export const getEvents = async (filters?: Partial<SearchFilters>): Promise<Event[]> => {
@@ -334,6 +337,230 @@ export const updateBooking = async (bookingId: string, updates: Partial<Booking>
   }
 };
 
+export const getBookingById = async (bookingId: string): Promise<Booking | null> => {
+  try {
+    if (!db) return null;
+
+    const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+    if (bookingDoc.exists()) {
+      const data = bookingDoc.data();
+      return {
+        id: bookingDoc.id,
+        userId: data.userId,
+        userEmail: data.userEmail,
+        userName: data.userName,
+        eventId: data.eventId,
+        eventTitle: data.eventTitle,
+        eventDate: data.eventDate,
+        eventTime: data.eventTime,
+        eventLocation: data.eventLocation,
+        eventImage: data.eventImage,
+        ticketCount: data.ticketCount,
+        ticketTier: data.ticketTier,
+        totalAmount: data.totalAmount,
+        status: data.status,
+        bookingDate: data.bookingDate,
+        qrCode: data.qrCode,
+        qrCodeData: data.qrCodeData,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching booking:', error);
+    return null;
+  }
+};
+
+// Check if user already has a booking for this event
+export const checkExistingBooking = async (userId: string, eventId: string): Promise<boolean> => {
+  try {
+    if (!db) return false;
+
+    const q = query(
+      collection(db, 'bookings'),
+      where('userId', '==', userId),
+      where('eventId', '==', eventId),
+      where('status', 'in', ['booked', 'confirmed', 'pending'])
+    );
+
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error('Error checking existing booking:', error);
+    return false;
+  }
+};
+
+// Generate QR code for booking
+export const generateBookingQRCode = async (bookingId: string, eventId: string): Promise<{ qrCode: string; qrCodeData: string }> => {
+  try {
+    // Create readable text that any QR scanner can display
+    const qrCodeData = `TICKZY TICKET
+Booking ID: ${bookingId}
+Event ID: ${eventId}
+Valid Ticket - Show at venue
+Scan Date: ${new Date().toLocaleDateString()}
+Time: ${new Date().toLocaleTimeString()}`;
+
+    const qrCode = await QRCode.toDataURL(qrCodeData, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+
+    return { qrCode, qrCodeData };
+  } catch (error) {
+    console.error('Error generating QR code:', error);
+    // Fallback to simple text format
+    const qrCodeData = `TICKZY TICKET - Booking: ${bookingId}`;
+    return { qrCode: '', qrCodeData };
+  }
+};
+
+// Generate QR code with full event details
+export const generateBookingQRCodeWithDetails = async (bookingId: string, eventId: string, eventData: Event): Promise<{ qrCode: string; qrCodeData: string }> => {
+  try {
+    // Create comprehensive ticket information that's readable when scanned
+    const qrCodeData = `🎟️ TICKZY TICKET 🎟️
+
+📅 EVENT: ${eventData.title}
+📍 VENUE: ${eventData.location}
+🗓️ DATE: ${new Date(eventData.date).toLocaleDateString()}
+⏰ TIME: ${eventData.time}
+💰 PRICE: $${eventData.price}
+
+🎫 BOOKING DETAILS:
+ID: ${bookingId}
+Status: VALID TICKET
+Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+
+✅ Show this QR code at venue entrance
+🌐 Verification: localhost:3000/ticket/${bookingId}`;
+
+    const qrCode = await QRCode.toDataURL(qrCodeData, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+
+    return { qrCode, qrCodeData };
+  } catch (error) {
+    console.error('Error generating detailed QR code:', error);
+    // Fallback to basic QR code
+    return generateBookingQRCode(bookingId, eventId);
+  }
+};
+
+// Atomic booking creation with seat decrement
+export const createBookingAtomic = async (
+  userId: string,
+  userEmail: string,
+  userName: string,
+  eventId: string,
+  ticketCount: number = 1
+): Promise<{ success: boolean; bookingId?: string; error?: string }> => {
+  try {
+    if (!db) return { success: false, error: 'Database not available' };
+
+    // Check if user already has a booking for this event
+    const hasExistingBooking = await checkExistingBooking(userId, eventId);
+    if (hasExistingBooking) {
+      return { success: false, error: 'You already have a booking for this event' };
+    }
+
+    // Use transaction to ensure atomicity
+    const result = await runTransaction(db, async (transaction) => {
+      // Get event document
+      const eventRef = doc(db, 'events', eventId);
+      const eventDoc = await transaction.get(eventRef);
+
+      if (!eventDoc.exists()) {
+        throw new Error('Event not found');
+      }
+
+      const eventData = eventDoc.data() as Event;
+
+      // Check if event date has passed
+      const eventDate = new Date(eventData.date);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+      if (eventDate < now) {
+        throw new Error('This event has already passed and is no longer available for booking');
+      }
+
+      // Check if event is published/approved and has seats available
+      if (eventData.status !== 'published' && eventData.status !== 'approved') {
+        throw new Error('Event is not available for booking');
+      }
+
+      const currentSeatsLeft = eventData.seatsLeft || eventData.capacity || 0;
+      if (currentSeatsLeft < ticketCount) {
+        throw new Error(`Only ${currentSeatsLeft} seats available`);
+      }
+
+      // Create booking document
+      const bookingRef = doc(collection(db, 'bookings'));
+      const bookingId = bookingRef.id;
+
+      // Generate QR code with event details
+      const { qrCode, qrCodeData } = await generateBookingQRCodeWithDetails(bookingId, eventId, eventData);
+
+      const bookingData: Omit<Booking, 'id'> = {
+        userId,
+        userEmail,
+        userName,
+        eventId,
+        eventTitle: eventData.title,
+        eventDate: eventData.date,
+        eventTime: eventData.time,
+        eventLocation: eventData.location,
+        eventImage: eventData.image,
+        ticketCount,
+        ticketTier: 'regular',
+        totalAmount: eventData.price * ticketCount,
+        status: 'booked',
+        bookingDate: new Date().toISOString(),
+        qrCode,
+        qrCodeData,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      };
+
+      // Create booking
+      transaction.set(bookingRef, bookingData);
+
+      // Update event seats and tickets sold
+      transaction.update(eventRef, {
+        seatsLeft: increment(-ticketCount),
+        ticketsSold: increment(ticketCount),
+        revenue: increment(eventData.price * ticketCount),
+        updatedAt: Timestamp.now()
+      });
+
+      return { bookingId, eventData, bookingData };
+    });
+
+    return {
+      success: true,
+      bookingId: result.bookingId,
+      qrCode: result.bookingData.qrCode,
+      bookingData: result.bookingData
+    };
+  } catch (error: any) {
+    console.error('Error creating booking:', error);
+    return { success: false, error: error.message || 'Failed to create booking' };
+  }
+};
+
 // Notifications
 export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
   try {
@@ -375,6 +602,8 @@ export const markNotificationAsRead = async (notificationId: string): Promise<bo
     return false;
   }
 };
+
+
 
 // Utility functions
 export const generateQRCode = (bookingId: string, eventId: string): string => {
@@ -480,3 +709,5 @@ export const createSampleEvent = async (hostId: string): Promise<boolean> => {
     return false;
   }
 };
+
+

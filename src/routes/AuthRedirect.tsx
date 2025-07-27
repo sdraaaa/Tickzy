@@ -15,11 +15,11 @@ interface AuthRedirectProps {
   redirectTo?: string;
 }
 
-const AuthRedirect: React.FC<AuthRedirectProps> = ({ 
-  children, 
-  redirectTo = '/dashboard' 
+const AuthRedirect: React.FC<AuthRedirectProps> = ({
+  children,
+  redirectTo = '/dashboard'
 }) => {
-  const { user, loading } = useAuth();
+  const { user, userData, loading, needsEmailVerification } = useAuth();
 
   // Show loading spinner while auth state is being determined
   if (loading) {
@@ -33,9 +33,14 @@ const AuthRedirect: React.FC<AuthRedirectProps> = ({
     );
   }
 
-  // If user is authenticated, redirect them to dashboard
-  if (user) {
-    return <Navigate to={redirectTo} replace />;
+  // If user is authenticated, redirect them appropriately
+  if (user && userData) {
+    // Check if user needs email verification
+    if (needsEmailVerification()) {
+      return <Navigate to="/verify-email" replace />;
+    } else {
+      return <Navigate to={redirectTo} replace />;
+    }
   }
 
   // If user is not authenticated, render the public content
