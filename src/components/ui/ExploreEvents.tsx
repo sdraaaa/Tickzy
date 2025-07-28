@@ -7,11 +7,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGlobalToast } from '../../contexts/ToastContext';
 import { getEvents, migrateEventsAddSeatsLeft } from '../../services/firestore';
 import { getDefaultEventImage } from '../../utils/defaultImage';
 import { Event, SearchFilters } from '../../types';
 import BookingModal from './BookingModal';
-import { ToastContainer, useToast } from './Toast';
 
 interface ExploreEventsProps {
   searchQuery?: string;
@@ -32,7 +32,7 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   // Toast notifications
-  const { toasts, showSuccess, showError, removeToast } = useToast();
+  const { showSuccess, showError } = useGlobalToast();
 
 
   // Fetch events from Firestore
@@ -388,9 +388,6 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
           onClose={handleCloseBookingModal}
           onBookingSuccess={handleBookingSuccess}
         />
-
-        {/* Toast Notifications */}
-        <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
       </div>
     </section>
   );

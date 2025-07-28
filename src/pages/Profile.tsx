@@ -8,8 +8,8 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useGlobalToast } from '../contexts/ToastContext';
 import { updateDisplayName, updateProfilePicture, validateProfileImage, getDisplayName } from '../services/profileService';
-import { ToastContainer, useToast } from '../components/ui/Toast';
 import UnifiedNavbar from '../components/ui/UnifiedNavbar';
 
 const Profile: React.FC = () => {
@@ -24,7 +24,7 @@ const Profile: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   
   // Toast notifications
-  const { toasts, showSuccess, showError, removeToast } = useToast();
+  const { showSuccess, showError } = useGlobalToast();
 
   // Handle display name update
   const handleNameUpdate = async (e: React.FormEvent) => {
@@ -326,9 +326,6 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
     </div>
   );
 };

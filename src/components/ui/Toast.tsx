@@ -95,13 +95,13 @@ const Toast: React.FC<ToastProps> = ({
   return (
     <div
       className={`
-        fixed top-4 right-4 z-50 max-w-sm w-full
+        relative max-w-sm w-full
         transform transition-all duration-300 ease-in-out
         ${isVisible && !isLeaving ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
       `}
     >
       <div className={`
-        rounded-lg border backdrop-blur-sm shadow-lg p-4
+        rounded-lg border backdrop-blur-sm shadow-lg p-4 min-w-[320px]
         ${getTypeStyles()}
       `}>
         <div className="flex items-start">
@@ -138,13 +138,13 @@ interface ToastContainerProps {
 
 export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemoveToast }) => {
   return (
-    <div className="fixed top-0 right-0 z-50 p-4 space-y-2">
+    <div className="fixed top-20 right-4 z-[9999] space-y-3 pointer-events-none max-w-sm">
       {toasts.map((toast, index) => (
         <div
           key={toast.id}
-          style={{ 
-            transform: `translateY(${index * 10}px)`,
-            zIndex: 50 - index 
+          className="pointer-events-auto"
+          style={{
+            zIndex: 9999 - index
           }}
         >
           <Toast {...toast} onClose={onRemoveToast} />

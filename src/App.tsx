@@ -8,6 +8,7 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './routes/ProtectedRoute';
 import AuthRedirect from './routes/AuthRedirect';
 import LandingPage from './pages/LandingPage';
@@ -24,12 +25,11 @@ import Footer from './components/ui/Footer';
 const App: React.FC = () => {
   const location = useLocation();
 
-
-
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-black">
-        <Routes>
+      <ToastProvider>
+        <div className="min-h-screen bg-black">
+          <Routes>
         {/* Landing page - redirect authenticated users to dashboard */}
         <Route path="/" element={
           <AuthRedirect>
@@ -80,11 +80,12 @@ const App: React.FC = () => {
             <RequestHost />
           </ProtectedRoute>
         } />
-      </Routes>
+        </Routes>
 
-        {/* Footer on all pages */}
-        <Footer />
-      </div>
+          {/* Footer on all pages */}
+          <Footer />
+        </div>
+      </ToastProvider>
     </AuthProvider>
   );
 };
