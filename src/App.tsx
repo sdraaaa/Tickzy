@@ -18,6 +18,7 @@ import CreateEvent from './pages/CreateEvent';
 import RequestHost from './pages/RequestHost';
 import VerifyEmail from './pages/VerifyEmail';
 import TicketVerification from './pages/TicketVerification';
+import Profile from './pages/Profile';
 import Footer from './components/ui/Footer';
 
 const App: React.FC = () => {
@@ -56,6 +57,13 @@ const App: React.FC = () => {
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        } />
+
+        {/* Profile - accessible to all authenticated users */}
+        <Route path="/dashboard/profile" element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         } />
 

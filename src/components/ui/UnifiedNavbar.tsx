@@ -304,15 +304,48 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className={`w-10 h-10 bg-gradient-to-r ${
-                  userData?.role === 'admin' ? 'from-red-500 to-orange-500' :
-                  userData?.role === 'host' ? 'from-green-500 to-emerald-500' :
-                  'from-purple-500 to-blue-500'
-                } rounded-full flex items-center justify-center hover:scale-105 transition-transform duration-200`}
+                className="w-10 h-10 rounded-full hover:scale-105 transition-transform duration-200 overflow-hidden border-2 border-gray-600 hover:border-gray-400"
               >
-                <span className="text-white text-sm font-medium">
-                  {(user?.displayName || user?.email || 'U')[0].toUpperCase()}
-                </span>
+                {user?.photoURL ? (
+                  <>
+                    <img
+                      src={user.photoURL}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to gradient avatar if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) {
+                          fallback.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    <div
+                      className={`w-full h-full bg-gradient-to-r ${
+                        userData?.role === 'admin' ? 'from-red-500 to-orange-500' :
+                        userData?.role === 'host' ? 'from-green-500 to-emerald-500' :
+                        'from-purple-500 to-blue-500'
+                      } items-center justify-center`}
+                      style={{ display: 'none' }}
+                    >
+                      <span className="text-white text-sm font-medium">
+                        {(user?.displayName || user?.email?.split('@')[0] || 'U')[0].toUpperCase()}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-r ${
+                    userData?.role === 'admin' ? 'from-red-500 to-orange-500' :
+                    userData?.role === 'host' ? 'from-green-500 to-emerald-500' :
+                    'from-purple-500 to-blue-500'
+                  } flex items-center justify-center`}>
+                    <span className="text-white text-sm font-medium">
+                      {(user?.displayName || user?.email?.split('@')[0] || 'U')[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
               </button>
 
               {/* Dropdown Menu */}
@@ -327,6 +360,15 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
                         {userData?.role}
                       </div>
                     </div>
+                    <button
+                      onClick={() => {
+                        navigate('/dashboard/profile');
+                        setDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors duration-200"
+                    >
+                      My Profile
+                    </button>
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700 transition-colors duration-200"

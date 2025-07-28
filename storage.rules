@@ -66,16 +66,22 @@ service firebase.storage {
     // Profile images - users can upload their own, public can read
     match /profileImages/{userId}/{filename} {
       // Users can upload their own profile images
-      allow write: if isAuthenticated() && 
+      allow write: if isAuthenticated() &&
                       request.auth.uid == userId &&
                       request.resource.contentType.matches('image/.*') &&
                       request.resource.size <= 2 * 1024 * 1024; // 2MB limit for profile images
-      
+
       // Public read access for profile images
       allow read: if true;
-      
+
       // Users can delete their own profile images
       allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Profile pictures - temporary permissive rules for testing
+    match /profilePictures/{allPaths=**} {
+      // Allow any authenticated user to upload profile pictures (temporary for testing)
+      allow read, write, delete: if request.auth != null;
     }
     
     // Default deny all other paths
