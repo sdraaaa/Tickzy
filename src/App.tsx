@@ -14,6 +14,7 @@ import AuthRedirect from './routes/AuthRedirect';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import ExploreEvents from './pages/ExploreEvents';
+import EventDetail from './pages/EventDetail';
 import Dashboard from './components/Dashboard';
 import CreateEvent from './pages/CreateEvent';
 import RequestHost from './pages/RequestHost';
@@ -49,6 +50,9 @@ const App: React.FC = () => {
 
         {/* Explore events - accessible to all users */}
         <Route path="/explore-events" element={<ExploreEvents />} />
+
+        {/* Event detail - accessible to all users */}
+        <Route path="/event/:eventId" element={<EventDetail />} />
 
         {/* Ticket verification - accessible to all users */}
         <Route path="/ticket/:bookingId" element={<TicketVerification />} />

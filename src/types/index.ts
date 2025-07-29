@@ -4,6 +4,17 @@
 
 import { Timestamp } from 'firebase/firestore';
 
+// Ticket tier types
+export interface TicketTier {
+  id: string;
+  name: string; // e.g., "General Admission", "VIP", "Premium"
+  price: number;
+  seats: number; // Available seats for this tier
+  saleStart?: string; // ISO date string - when sales start
+  saleEnd?: string; // ISO date string - when sales end
+  description?: string; // Optional description of tier benefits
+}
+
 // Event related types
 export interface Event {
   id: string;
@@ -24,6 +35,7 @@ export interface Event {
   seatsLeft: number; // Available seats for booking
   capacity: number; // Total capacity (same as totalTickets)
   revenue: number;
+  ticketTiers?: TicketTier[]; // Optional ticket tiers for different pricing
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

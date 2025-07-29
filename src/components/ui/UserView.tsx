@@ -39,33 +39,101 @@ const UserView: React.FC = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <EventCard 
-                title="Tech Conference 2024"
-                date="Dec 15, 2024"
-                location="Convention Center"
-                price="$99"
-                image="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400"
+              <EventCard
+                event={{
+                  id: "sample-1",
+                  title: "Tech Conference 2024",
+                  description: "Join industry leaders for cutting-edge technology discussions",
+                  date: "2024-12-15",
+                  time: "09:00",
+                  location: "Convention Center",
+                  price: 99,
+                  tags: ["Technology", "Conference", "Networking"],
+                  category: "Technology",
+                  image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400",
+                  hostId: "sample-host",
+                  hostName: "Tech Events Inc",
+                  status: "published",
+                  totalTickets: 500,
+                  ticketsSold: 250,
+                  seatsLeft: 250,
+                  capacity: 500,
+                  revenue: 24750,
+                  createdAt: new Date() as any,
+                  updatedAt: new Date() as any
+                }}
               />
-              <EventCard 
-                title="Music Festival"
-                date="Dec 20, 2024"
-                location="City Park"
-                price="$75"
-                image="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400"
+              <EventCard
+                event={{
+                  id: "sample-2",
+                  title: "Music Festival",
+                  description: "Experience amazing live music from top artists",
+                  date: "2024-12-20",
+                  time: "18:00",
+                  location: "City Park",
+                  price: 75,
+                  tags: ["Music", "Festival", "Outdoor"],
+                  category: "Music",
+                  image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
+                  hostId: "sample-host",
+                  hostName: "Music Events Co",
+                  status: "published",
+                  totalTickets: 1000,
+                  ticketsSold: 800,
+                  seatsLeft: 200,
+                  capacity: 1000,
+                  revenue: 60000,
+                  createdAt: new Date() as any,
+                  updatedAt: new Date() as any
+                }}
               />
-              <EventCard 
-                title="Art Workshop"
-                date="Dec 25, 2024"
-                location="Art Studio"
-                price="$45"
-                image="https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400"
+              <EventCard
+                event={{
+                  id: "sample-3",
+                  title: "Art Workshop",
+                  description: "Learn painting techniques from professional artists",
+                  date: "2024-12-25",
+                  time: "14:00",
+                  location: "Art Studio",
+                  price: 45,
+                  tags: ["Art", "Workshop", "Creative"],
+                  category: "Art",
+                  image: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400",
+                  hostId: "sample-host",
+                  hostName: "Creative Arts Studio",
+                  status: "published",
+                  totalTickets: 30,
+                  ticketsSold: 15,
+                  seatsLeft: 15,
+                  capacity: 30,
+                  revenue: 675,
+                  createdAt: new Date() as any,
+                  updatedAt: new Date() as any
+                }}
               />
-              <EventCard 
-                title="Food Festival"
-                date="Dec 30, 2024"
-                location="Downtown Square"
-                price="$25"
-                image="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400"
+              <EventCard
+                event={{
+                  id: "sample-4",
+                  title: "Food Festival",
+                  description: "Taste delicious food from local restaurants and vendors",
+                  date: "2024-12-30",
+                  time: "12:00",
+                  location: "Downtown Square",
+                  price: 25,
+                  tags: ["Food", "Festival", "Local"],
+                  category: "Food",
+                  image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400",
+                  hostId: "sample-host",
+                  hostName: "Local Food Association",
+                  status: "published",
+                  totalTickets: 2000,
+                  ticketsSold: 1500,
+                  seatsLeft: 500,
+                  capacity: 2000,
+                  revenue: 37500,
+                  createdAt: new Date() as any,
+                  updatedAt: new Date() as any
+                }}
               />
             </div>
           </div>

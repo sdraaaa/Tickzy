@@ -16,15 +16,48 @@ const Profile: React.FC = () => {
   const { user, userData, loading } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Form state
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   // Toast notifications
   const { showSuccess, showError } = useGlobalToast();
+
+  // Handle navigation from navbar
+  const handleNavigation = (view: 'explore' | 'my-dashboard') => {
+    console.log('Profile: Navigation clicked:', view);
+    // Navigate to dashboard and then scroll to the appropriate section
+    navigate('/dashboard');
+    setTimeout(() => {
+      if (view === 'explore') {
+        const exploreSection = document.getElementById('explore-events');
+        if (exploreSection) {
+          exploreSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      } else if (view === 'my-dashboard') {
+        const myDashboardSection = document.getElementById('my-dashboard');
+        if (myDashboardSection) {
+          myDashboardSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }
+    }, 100);
+  };
+
+  // Handle search from navbar
+  const handleSearch = (query: string) => {
+    // Navigate to dashboard and search
+    navigate('/dashboard');
+    // The search will be handled by the dashboard component
+  };
 
   // Handle display name update
   const handleNameUpdate = async (e: React.FormEvent) => {
@@ -140,7 +173,7 @@ const Profile: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black">
-      <UnifiedNavbar />
+      <UnifiedNavbar onNavigate={handleNavigation} onSearch={handleSearch} />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}

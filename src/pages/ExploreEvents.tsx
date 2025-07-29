@@ -19,10 +19,7 @@ const ExploreEvents: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const handleBackToHome = () => {
-    // Navigate to dashboard if authenticated, otherwise to landing page
-    navigate(user ? '/dashboard' : '/');
-  };
+
 
   // Fetch events from Firebase
   useEffect(() => {
@@ -80,17 +77,9 @@ const ExploreEvents: React.FC = () => {
       {/* Header */}
       <div className="bg-neutral-900 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Explore Events</h1>
-              <p className="text-gray-400 mt-2">Discover amazing events happening near you</p>
-            </div>
-            <button
-              onClick={handleBackToHome}
-              className="text-purple-400 hover:text-purple-300 font-medium transition-colors duration-200"
-            >
-              ← Back to Home
-            </button>
+          <div>
+            <h1 className="text-3xl font-bold text-white">Explore Events</h1>
+            <p className="text-gray-400 mt-2">Discover amazing events happening near you</p>
           </div>
         </div>
       </div>

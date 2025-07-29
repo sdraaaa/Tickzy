@@ -35,9 +35,9 @@ const EventShowcase: React.FC = () => {
     fetchEvents();
   }, []);
 
-  const handleEventClick = () => {
-    // Redirect to login when trying to book an event
-    navigate('/login');
+  const handleEventClick = (eventId: string) => {
+    // Navigate to event detail page
+    navigate(`/event/${eventId}`);
   };
 
   return (
@@ -65,13 +65,10 @@ const EventShowcase: React.FC = () => {
         {!loading && events.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             {events.map((event) => (
-              <div key={event.id} onClick={handleEventClick} className="cursor-pointer">
+              <div key={event.id} className="cursor-pointer">
                 <EventCard
-                  title={event.title}
-                  date={new Date(event.date).toLocaleDateString()}
-                  location={event.location}
-                  price={`$${event.price}`}
-                  image={event.image}
+                  event={event}
+                  onClick={handleEventClick}
                 />
               </div>
             ))}

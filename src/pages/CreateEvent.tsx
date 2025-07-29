@@ -12,6 +12,7 @@ import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import PDFUpload from '../components/ui/PDFUpload';
 import { generatePDFPath } from '../services/storage';
+import UnifiedNavbar from '../components/ui/UnifiedNavbar';
 
 interface EventFormData {
   title: string;
@@ -28,6 +29,38 @@ interface EventFormData {
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const { user, userData } = useAuth();
+
+  // Handle navigation from navbar
+  const handleNavigation = (view: 'explore' | 'my-dashboard') => {
+    // Navigate to dashboard and then scroll to the appropriate section
+    navigate('/dashboard');
+    setTimeout(() => {
+      if (view === 'explore') {
+        const exploreSection = document.getElementById('explore-events');
+        if (exploreSection) {
+          exploreSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      } else if (view === 'my-dashboard') {
+        const myDashboardSection = document.getElementById('my-dashboard');
+        if (myDashboardSection) {
+          myDashboardSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      }
+    }, 100);
+  };
+
+  // Handle search from navbar
+  const handleSearch = (query: string) => {
+    // Navigate to dashboard and search
+    navigate('/dashboard');
+    // The search will be handled by the dashboard component
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -152,8 +185,10 @@ const CreateEvent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-black">
+      <UnifiedNavbar onNavigate={handleNavigation} onSearch={handleSearch} />
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-white mb-4">Create New Event</h1>
