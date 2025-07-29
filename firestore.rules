@@ -106,9 +106,17 @@ service cloud.firestore {
 
     // Notifications - users can access their own, admins can access all
     match /notifications/{notificationId} {
-      allow read, write: if request.auth != null && (
+      // Allow users to create notifications for themselves
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Allow users to read/update their own notifications, admins can access all
+      allow read, update, delete: if request.auth != null && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
+
+      // Allow admins to create notifications for any user
+      allow create: if isAdmin();
     }
 
     // Temporary: Allow admin to read any collection for debugging

@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserBookings } from '../../services/firestore';
+import { getUserBookings, getEventById } from '../../services/firestore';
 import { Booking } from '../../types';
 import TicketModal from './TicketModal';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';

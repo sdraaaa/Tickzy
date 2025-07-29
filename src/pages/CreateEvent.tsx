@@ -13,6 +13,7 @@ import { db } from '../firebase';
 import PDFUpload from '../components/ui/PDFUpload';
 import { generatePDFPath } from '../services/storage';
 import UnifiedNavbar from '../components/ui/UnifiedNavbar';
+import { notificationService } from '../services/notificationService';
 
 interface EventFormData {
   title: string;
@@ -24,6 +25,7 @@ interface EventFormData {
   seatsLeft: number;
   bannerURL: string;
   venueProofPDF: string;
+  tags: string; // Comma-separated string input
 }
 
 const CreateEvent: React.FC = () => {
@@ -71,7 +73,8 @@ const CreateEvent: React.FC = () => {
     price: 0,
     seatsLeft: 0,
     bannerURL: '',
-    venueProofPDF: ''
+    venueProofPDF: '',
+    tags: ''
   });
   const [errors, setErrors] = useState<Partial<EventFormData>>({});
 
@@ -93,6 +96,17 @@ const CreateEvent: React.FC = () => {
     if (errors[name as keyof EventFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
+  };
+
+  // Parse tags from comma-separated string
+  const parseTags = (tagsString: string): string[] => {
+    if (!tagsString.trim()) return [];
+
+    return tagsString
+      .split(',')
+      .map(tag => tag.trim().toLowerCase())
+      .filter(tag => tag.length > 0)
+      .slice(0, 5); // Limit to 5 tags maximum
   };
 
   const handleVenueProofUpload = (downloadURL: string) => {
@@ -127,7 +141,20 @@ const CreateEvent: React.FC = () => {
     if (!formData.locationName.trim()) newErrors.locationName = 'Location is required';
     if (formData.price < 0) newErrors.price = 'Price cannot be negative';
     if (formData.seatsLeft <= 0) newErrors.seatsLeft = 'Seats must be greater than 0';
+    if (!formData.bannerURL.trim()) newErrors.bannerURL = 'Event banner URL is required';
     if (!formData.venueProofPDF) newErrors.venueProofPDF = 'Venue booking proof is required';
+
+    // Validate tags (required)
+    if (!formData.tags.trim()) {
+      newErrors.tags = 'At least one tag is required';
+    } else {
+      const tags = parseTags(formData.tags);
+      if (tags.length === 0) {
+        newErrors.tags = 'At least one valid tag is required';
+      } else if (tags.length > 5) {
+        newErrors.tags = 'Maximum 5 tags allowed';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -140,8 +167,12 @@ const CreateEvent: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      // Parse tags for logging
+      const eventTags = parseTags(formData.tags);
+      console.log('🏷️ Event tags to be saved:', eventTags);
+
       // Create event document in Firestore
-      await addDoc(collection(db, 'events'), {
+      const eventDoc = await addDoc(collection(db, 'events'), {
         title: formData.title,
         description: formData.description,
         date: formData.date,
@@ -158,10 +189,24 @@ const CreateEvent: React.FC = () => {
         status: 'pending',
         ticketsSold: 0,
         revenue: 0,
-        tags: [],
+        tags: parseTags(formData.tags),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       });
+
+      // Send notification to host
+      try {
+        console.log('🔔 Creating notification for user:', user.uid, 'Event:', formData.title);
+        await notificationService.notifyHostEventCreated(
+          user.uid,
+          formData.title,
+          eventDoc.id
+        );
+        console.log('✅ Notification created successfully');
+      } catch (notificationError) {
+        console.error('❌ Failed to create notification:', notificationError);
+        // Don't fail the event creation if notification fails
+      }
 
       // Show success message and redirect
       alert('Event created successfully! It will be reviewed by admin before publishing.');
@@ -323,10 +368,10 @@ const CreateEvent: React.FC = () => {
                 {errors.seatsLeft && <p className="text-red-400 text-sm mt-1">{errors.seatsLeft}</p>}
               </div>
 
-              {/* Banner URL (Optional) */}
+              {/* Banner URL */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-white mb-2">
-                  Event Banner URL (Optional)
+                  Event Banner URL <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="url"
@@ -335,7 +380,41 @@ const CreateEvent: React.FC = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 bg-neutral-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="https://example.com/banner.jpg"
+                  required
                 />
+                {errors.bannerURL && <p className="text-red-400 text-sm mt-1">{errors.bannerURL}</p>}
+              </div>
+
+              {/* Event Tags */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-white mb-2">
+                  Event Tags <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="tags"
+                  value={formData.tags}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-neutral-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="music, outdoor, free, tech, workshop"
+                  required
+                />
+                <p className="text-gray-400 text-xs mt-1">
+                  Add 1-5 tags separated by commas. Tags help users find your event more easily.
+                </p>
+                {errors.tags && <p className="text-red-400 text-sm mt-1">{errors.tags}</p>}
+                {formData.tags && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {parseTags(formData.tags).map((tag, index) => (
+                      <span
+                        key={index}
+                        className="bg-purple-700 text-white text-xs px-2 py-1 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

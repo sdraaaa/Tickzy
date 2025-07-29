@@ -9,6 +9,7 @@ import { Event } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { createBookingAtomic } from '../../services/firestore';
 import { emailService } from '../../services/emailService';
+import { notificationService } from '../../services/notificationService';
 
 interface BookingModalProps {
   event: Event | null;
@@ -90,6 +91,19 @@ const BookingModal: React.FC<BookingModalProps> = ({
       } catch (emailError) {
         console.error('Failed to send confirmation email:', emailError);
         // Don't fail the booking if email fails
+      }
+
+      // Send in-app notification to user
+      try {
+        await notificationService.notifyUserBookingConfirmed(
+          user.uid,
+          event.title,
+          event.id,
+          result.bookingId!
+        );
+      } catch (notificationError) {
+        console.error('Failed to send booking notification:', notificationError);
+        // Don't fail the booking if notification fails
       }
 
       // Success!

@@ -41,15 +41,33 @@ const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
       return dateString;
     }
   };
+
+  // Get the banner image with fallback
+  const getBannerImage = () => {
+    // Prioritize bannerURL if available, fallback to image, then default
+    if (event.bannerURL && event.bannerURL.trim()) {
+      return event.bannerURL;
+    }
+    if (event.image && event.image.trim()) {
+      return event.image;
+    }
+    return getDefaultEventImage();
+  };
+
+  // Don't render the card if no valid banner is available
+  if (!event.bannerURL && !event.image) {
+    console.warn(`Event ${event.id} has no banner image, skipping render`);
+    return null;
+  }
   return (
     <div
       className="bg-neutral-800 rounded-xl overflow-hidden border border-gray-700 hover:border-purple-500/50 transition-all duration-300 hover:transform hover:scale-105 group cursor-pointer"
       onClick={handleCardClick}
     >
-      {/* Event Image */}
+      {/* Event Banner */}
       <div className="relative h-48 overflow-hidden">
         <img
-          src={event.image}
+          src={getBannerImage()}
           alt={event.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
           onError={(e) => {
@@ -104,11 +122,11 @@ const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
 
         {/* Dynamic Tags */}
         {event.tags && event.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-1 mb-4">
             {event.tags.slice(0, 3).map((tag, index) => (
               <span
                 key={index}
-                className="bg-purple-900/50 text-purple-300 px-2 py-1 rounded-full text-xs font-medium border border-purple-700/50"
+                className="bg-purple-700 text-white text-xs px-2 py-1 rounded-full mr-1"
               >
                 {tag}
               </span>

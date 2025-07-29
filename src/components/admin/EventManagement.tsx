@@ -10,6 +10,7 @@ import { db } from '../../firebase';
 import { Event } from '../../types';
 import { getDefaultEventImage } from '../../utils/defaultImage';
 import EventReviewModal from './EventReviewModal';
+import { notificationService } from '../../services/notificationService';
 
 interface EventWithHost extends Event {
   hostEmail?: string;
@@ -166,20 +167,33 @@ const EventManagement: React.FC = () => {
   };
 
   const deleteEvent = async (eventId: string) => {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+    const eventToDelete = events.find(event => event.id === eventId);
+    if (!eventToDelete) return;
+
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone and will notify all affected users.')) {
       return;
     }
 
     setUpdating(eventId);
     try {
+      // Send notifications before deleting the event
+      await notificationService.notifyEventDeleted(
+        eventId,
+        eventToDelete.title,
+        eventToDelete.hostId
+      );
+
+      // Delete the event from Firestore
       await deleteDoc(doc(db, 'events', eventId));
-      
+
       // Update local state
       setEvents(events.filter(event => event.id !== eventId));
-      
+
+      console.log(`✅ Event "${eventToDelete.title}" deleted and notifications sent`);
 
     } catch (error) {
       console.error('Error deleting event:', error);
+      alert('Failed to delete event. Please try again.');
     } finally {
       setUpdating(null);
     }

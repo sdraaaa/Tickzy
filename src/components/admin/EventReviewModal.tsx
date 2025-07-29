@@ -9,6 +9,7 @@ import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminLogger } from '../../services/adminLogger';
+import { notificationService } from '../../services/notificationService';
 
 interface EventWithHost {
   id: string;
@@ -71,6 +72,15 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
         );
       }
 
+      // Send notification to host about approval
+      await notificationService.notifyHostEventApproved(
+        event.hostId,
+        event.title,
+        event.id,
+        event.hostEmail || '',
+        event.hostName || 'Host'
+      );
+
       onStatusUpdate(event.id, 'approved');
       onClose();
     } catch (error) {
@@ -108,6 +118,13 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
           event.hostEmail
         );
       }
+
+      // Send notification to host about rejection
+      await notificationService.notifyHostEventRejected(
+        event.hostId,
+        event.title,
+        rejectionReason.trim()
+      );
 
       onStatusUpdate(event.id, 'rejected');
       onClose();

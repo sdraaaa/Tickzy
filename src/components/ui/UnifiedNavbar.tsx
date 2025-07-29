@@ -5,9 +5,11 @@
  * Shows consistent navigation with role-based links and notifications
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserNotifications, markNotificationAsRead } from '../../services/firestore';
+import { Notification } from '../../types';
 
 interface UnifiedNavbarProps {
   onNavigate?: (view: 'explore' | 'my-dashboard') => void;
@@ -20,9 +22,79 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const { user, userData, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Load notifications when component mounts or user changes
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!user) {
+        console.log('🔔 No user, clearing notifications');
+        setNotifications([]);
+        return;
+      }
+
+      console.log('🔔 Loading notifications for user:', user.uid);
+      setLoadingNotifications(true);
+      try {
+        const userNotifications = await getUserNotifications(user.uid);
+        console.log('🔔 Loaded notifications:', userNotifications);
+        setNotifications(userNotifications);
+      } catch (error) {
+        console.error('❌ Error loading notifications:', error);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
+
+    loadNotifications();
+  }, [user]);
+
+  // Handle notification click
+  const handleNotificationClick = async (notification: Notification) => {
+    try {
+      // Mark as read
+      if (!notification.read) {
+        await markNotificationAsRead(notification.id);
+        setNotifications(prev =>
+          prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
+        );
+      }
+
+      // Navigate to action URL if provided
+      if (notification.actionUrl) {
+        navigate(notification.actionUrl);
+      }
+
+      // Close notifications panel
+      setNotificationsOpen(false);
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+    }
+  };
+
+  // Get unread notification count
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Manual refresh function for testing
+  const refreshNotifications = async () => {
+    if (!user) return;
+
+    console.log('🔄 Manually refreshing notifications...');
+    setLoadingNotifications(true);
+    try {
+      const userNotifications = await getUserNotifications(user.uid);
+      console.log('🔄 Manual refresh result:', userNotifications);
+      setNotifications(userNotifications);
+    } catch (error) {
+      console.error('❌ Error manually refreshing notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -275,25 +347,95 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {/* TODO: Show notification count when there are notifications */}
+                  {/* Notification count badge */}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
 
                 {/* Notifications Sidebar */}
                 {notificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-neutral-800 rounded-md shadow-lg border border-gray-700 z-50">
+                  <div className="absolute right-0 mt-2 w-80 bg-neutral-800 rounded-md shadow-lg border border-gray-700 z-50 max-h-96 overflow-y-auto">
                     <div className="p-4">
-                      <h3 className="text-white font-semibold mb-3">Notifications</h3>
-                      {/* Empty State - TODO: Replace with real notifications */}
-                      <div className="text-center py-8">
-                        <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-white font-semibold">Notifications</h3>
+                        <div className="flex items-center space-x-2">
+                          {unreadCount > 0 && (
+                            <span className="text-xs text-gray-400">{unreadCount} unread</span>
+                          )}
+                          <button
+                            onClick={refreshNotifications}
+                            className="text-gray-400 hover:text-white transition-colors"
+                            title="Refresh notifications"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          </button>
                         </div>
-                        <p className="text-gray-400 text-sm">You have no notifications yet.</p>
-                        <p className="text-gray-500 text-xs mt-1">We'll notify you about important updates and events.</p>
                       </div>
+
+                      {loadingNotifications ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
+                          <p className="text-gray-400 text-sm mt-2">Loading notifications...</p>
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="text-center py-8">
+                          <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-400 text-sm">You have no notifications yet.</p>
+                          <p className="text-gray-500 text-xs mt-1">We'll notify you about important updates and events.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {notifications.slice(0, 10).map((notification) => (
+                            <div
+                              key={notification.id}
+                              onClick={() => handleNotificationClick(notification)}
+                              className={`p-3 rounded-lg cursor-pointer transition-colors duration-200 ${
+                                notification.read
+                                  ? 'bg-neutral-700 hover:bg-neutral-600'
+                                  : 'bg-purple-900/30 border border-purple-700 hover:bg-purple-900/40'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className={`text-sm font-medium ${notification.read ? 'text-gray-300' : 'text-white'}`}>
+                                    {notification.title}
+                                  </h4>
+                                  <p className={`text-xs mt-1 ${notification.read ? 'text-gray-400' : 'text-gray-300'}`}>
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {new Date(notification.createdAt.toDate()).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-purple-500 rounded-full ml-2 mt-1"></div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+
+                          {notifications.length > 10 && (
+                            <div className="text-center pt-2">
+                              <button
+                                onClick={() => navigate('/dashboard')}
+                                className="text-purple-400 hover:text-purple-300 text-xs"
+                              >
+                                View all notifications
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

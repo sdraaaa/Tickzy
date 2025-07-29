@@ -27,6 +27,7 @@ export interface Event {
   tags: string[]; // Multiple tags for filtering
   category: string; // Primary category
   image: string;
+  bannerURL: string; // Required banner image URL
   hostId: string;
   hostName: string;
   status: 'draft' | 'published' | 'cancelled' | 'completed' | 'pending' | 'rejected';
@@ -69,9 +70,11 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'booking' | 'event' | 'system' | 'reminder';
+  type: 'booking' | 'event' | 'system' | 'reminder' | 'approval' | 'cancellation';
   read: boolean;
   actionUrl?: string;
+  eventId?: string; // Optional reference to related event
+  bookingId?: string; // Optional reference to related booking
   createdAt: Timestamp;
 }
 

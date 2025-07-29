@@ -564,27 +564,50 @@ export const createBookingAtomic = async (
 // Notifications
 export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
   try {
-    if (!db) return [];
+    console.log('🔔 getUserNotifications called for userId:', userId);
 
+    if (!db) {
+      console.error('❌ Database not available in getUserNotifications');
+      return [];
+    }
+
+    // Temporarily remove orderBy until index is built
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', userId),
-      orderBy('createdAt', 'desc'),
       limit(50)
     );
 
+    console.log('🔔 Executing notifications query...');
     const querySnapshot = await getDocs(q);
+    console.log('🔔 Query completed, documents found:', querySnapshot.size);
+
     const notifications: Notification[] = [];
 
     querySnapshot.forEach((doc) => {
-      notifications.push({
+      const notificationData = {
         id: doc.id,
         ...doc.data()
-      } as Notification);
+      } as Notification;
+      console.log('🔔 Found notification:', notificationData);
+      notifications.push(notificationData);
     });
 
+    // Sort by createdAt descending (newest first) - temporary until index is ready
+    notifications.sort((a, b) => {
+      const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+      const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    console.log('🔔 Total notifications returned:', notifications.length);
     return notifications;
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ Error in getUserNotifications:', {
+      error: error,
+      message: error.message,
+      code: error.code
+    });
     return [];
   }
 };
