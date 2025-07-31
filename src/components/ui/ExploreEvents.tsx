@@ -12,6 +12,7 @@ import { getEvents, migrateEventsAddSeatsLeft } from '../../services/firestore';
 import { getDefaultEventImage } from '../../utils/defaultImage';
 import { Event, SearchFilters } from '../../types';
 import BookingModal from './BookingModal';
+import { isEventPast } from '../../utils/dateUtils';
 
 interface ExploreEventsProps {
   searchQuery?: string;
@@ -102,12 +103,8 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
       return;
     }
 
-    // Check if event date has passed
-    const eventDate = new Date(event.date);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-
-    if (eventDate < now) {
+    // Check if event has completely passed (date + time)
+    if (isEventPast(event.date, event.time)) {
       showError('Event Passed', 'This event has already passed and is no longer available for booking');
       return;
     }
@@ -231,10 +228,8 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
         {!loading && events.length > 0 && (() => {
           // Filter events based on showPastEvents toggle
           const filteredEvents = showPastEvents ? events : events.filter(event => {
-            const eventDate = new Date(event.date);
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            return eventDate >= now; // Show only upcoming events by default
+            // Show only upcoming events by default (not past date + time)
+            return !isEventPast(event.date, event.time);
           });
 
           return (

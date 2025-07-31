@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import EventCard from '../ui/EventCard';
 import { getEvents } from '../../services/firestore';
 import { Event } from '../../types';
+import { isEventPast } from '../../utils/dateUtils';
 
 const EventShowcase: React.FC = () => {
   const navigate = useNavigate();
@@ -24,18 +25,14 @@ const EventShowcase: React.FC = () => {
         const fetchedEvents = await getEvents();
 
         // Additional client-side filtering for extra safety
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-
         const validEvents = fetchedEvents.filter(event => {
           // Ensure event is published/approved
           const isPublished = event.status === 'approved' ||
                              event.status === 'published' ||
                              event.status === 'active';
 
-          // Ensure event date hasn't passed
-          const eventDate = new Date(event.date);
-          const isUpcoming = eventDate >= now;
+          // Ensure event hasn't completely passed (date + time)
+          const isUpcoming = !isEventPast(event.date, event.time);
 
           // Ensure event is not cancelled/deleted
           const isValid = event.status !== 'cancelled' &&
@@ -75,16 +72,13 @@ const EventShowcase: React.FC = () => {
       const fetchedEvents = await getEvents();
 
       // Additional client-side filtering for extra safety
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-
       const validEvents = fetchedEvents.filter(event => {
         const isPublished = event.status === 'approved' ||
                            event.status === 'published' ||
                            event.status === 'active';
 
-        const eventDate = new Date(event.date);
-        const isUpcoming = eventDate >= now;
+        // Ensure event hasn't completely passed (date + time)
+        const isUpcoming = !isEventPast(event.date, event.time);
 
         const isValid = event.status !== 'cancelled' &&
                        event.status !== 'deleted' &&

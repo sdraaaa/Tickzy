@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getEventsByHost } from '../../services/firestore';
 import { Event } from '../../types';
+import { isEventPast } from '../../utils/dateUtils';
 
 const HostEvents: React.FC = () => {
   const navigate = useNavigate();
@@ -43,41 +44,38 @@ const HostEvents: React.FC = () => {
   const pendingStatuses = ['pending', 'draft', 'submitted', 'under_review'];
   const activeStatuses = ['approved', 'published', 'active', 'live', 'open'];
 
-  // Helper function to check if event date has passed
-  const isEventDatePast = (eventDate: string): boolean => {
-    const eventDateObj = new Date(eventDate);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-    return eventDateObj < now;
+  // Helper function to check if event has completely passed (date + time)
+  const isEventDatePast = (eventDate: string, eventTime: string): boolean => {
+    return isEventPast(eventDate, eventTime);
   };
 
-  // Active events: not past by status AND not past by date AND not pending
+  // Active events: not past by status AND not past by date+time AND not pending
   const activeEvents = events.filter(event => {
     const status = event.status?.toLowerCase() || '';
     const isPastByStatus = pastStatuses.some(s => s.toLowerCase() === status);
-    const isPastByDate = isEventDatePast(event.date);
+    const isPastByDate = isEventDatePast(event.date, event.time);
     const isPending = pendingStatuses.some(s => s.toLowerCase() === status);
 
-    // Event is active if it's not past (by status OR date) and not pending
+    // Event is active if it's not past (by status OR date+time) and not pending
     return !isPastByStatus && !isPastByDate && !isPending;
   });
 
-  // Pending events: pending, draft (events waiting for approval) AND not past by date
+  // Pending events: pending, draft (events waiting for approval) AND not past by date+time
   const pendingEvents = events.filter(event => {
-    const isPastByDate = isEventDatePast(event.date);
+    const isPastByDate = isEventDatePast(event.date, event.time);
     const isPending = pendingStatuses.includes(event.status);
 
-    // Event is pending if it has pending status AND date hasn't passed
+    // Event is pending if it has pending status AND date+time hasn't passed
     return isPending && !isPastByDate;
   });
 
-  // Past events: past by status OR past by date
+  // Past events: past by status OR past by date+time
   const pastEvents = events.filter(event => {
     const status = event.status?.toLowerCase() || '';
     const isPastByStatus = pastStatuses.some(s => s.toLowerCase() === status);
-    const isPastByDate = isEventDatePast(event.date);
+    const isPastByDate = isEventDatePast(event.date, event.time);
 
-    // Event is past if it's past by status OR past by date
+    // Event is past if it's past by status OR past by date+time
     return isPastByStatus || isPastByDate;
   });
 

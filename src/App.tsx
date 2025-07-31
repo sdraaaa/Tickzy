@@ -18,6 +18,7 @@ import EventDetail from './pages/EventDetail';
 import Dashboard from './components/Dashboard';
 import CreateEvent from './pages/CreateEvent';
 import RequestHost from './pages/RequestHost';
+import { initializeEventStatusUpdates } from './services/eventStatusService';
 import VerifyEmail from './pages/VerifyEmail';
 import TicketVerification from './pages/TicketVerification';
 import Profile from './pages/Profile';
@@ -25,6 +26,11 @@ import Footer from './components/ui/Footer';
 
 const App: React.FC = () => {
   const location = useLocation();
+
+  // Initialize event status updates when app starts
+  useEffect(() => {
+    initializeEventStatusUpdates();
+  }, []);
 
   return (
     <AuthProvider>

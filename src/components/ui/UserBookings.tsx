@@ -12,6 +12,7 @@ import { Booking } from '../../types';
 import TicketModal from './TicketModal';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { isEventPast } from '../../utils/dateUtils';
 
 const UserBookings: React.FC = () => {
   const { user } = useAuth();
@@ -70,17 +71,17 @@ const UserBookings: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // Filter bookings by tab
+  // Filter bookings by tab using complete date+time comparison
   const upcomingBookings = bookings.filter(booking => {
-    const eventDate = new Date(booking.eventDate);
-    const now = new Date();
-    return eventDate >= now && booking.status !== 'cancelled';
+    // Use event date+time for accurate filtering
+    const eventHasPassed = isEventPast(booking.eventDate, booking.eventTime || '00:00');
+    return !eventHasPassed && booking.status !== 'cancelled';
   });
 
   const pastBookings = bookings.filter(booking => {
-    const eventDate = new Date(booking.eventDate);
-    const now = new Date();
-    return eventDate < now || booking.status === 'attended';
+    // Use event date+time for accurate filtering
+    const eventHasPassed = isEventPast(booking.eventDate, booking.eventTime || '00:00');
+    return eventHasPassed || booking.status === 'attended';
   });
 
   const getStatusColor = (status: string) => {

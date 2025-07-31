@@ -8,6 +8,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Event } from '../../types';
 import { getDefaultEventImage } from '../../utils/defaultImage';
+import EventStatus from './EventStatus';
+import { isEventPast } from '../../utils/dateUtils';
 
 // Helper function to safely decode location
 const decodeLocation = (encodedLocation: string): string => {
@@ -90,14 +92,29 @@ const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
           </span>
         </div>
 
-        {/* Status Badge */}
-        {event.status === 'cancelled' && (
-          <div className="absolute top-4 left-4">
+        {/* Status Badges */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+          {/* Event Time Status */}
+          <EventStatus
+            eventDate={event.date}
+            eventTime={event.time}
+            showTimeRemaining={false}
+          />
+
+          {/* Cancellation Status */}
+          {event.status === 'cancelled' && (
             <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
               Cancelled
             </span>
-          </div>
-        )}
+          )}
+
+          {/* Past Event Overlay */}
+          {isEventPast(event.date, event.time) && (
+            <span className="bg-black/70 text-gray-300 px-3 py-1 rounded-full text-sm font-medium">
+              Event Ended
+            </span>
+          )}
+        </div>
 
         {event.seatsLeft === 0 && event.status !== 'cancelled' && (
           <div className="absolute top-4 left-4">

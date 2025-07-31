@@ -23,6 +23,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Event, Booking, Notification, SearchFilters, PaginatedResponse } from '../types';
+import { isEventPast } from '../utils/dateUtils';
 import { getDefaultEventImage } from '../utils/defaultImage';
 import QRCode from 'qrcode';
 
@@ -80,18 +81,14 @@ export const getEvents = async (filters?: Partial<SearchFilters>): Promise<Event
     });
 
     // Filter for public display - show approved/published events that are not past
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-
     const publicEvents = allEvents.filter(event => {
       // Check if event is approved/published
       const isApproved = event.status === 'approved' ||
                         event.status === 'published' ||
                         event.status === 'active';
 
-      // Check if event date hasn't passed
-      const eventDate = new Date(event.date);
-      const isUpcoming = eventDate >= now;
+      // Check if event hasn't completely passed (date + time)
+      const isUpcoming = !isEventPast(event.date, event.time);
 
       // Check if event is not cancelled or deleted
       const isNotCancelled = event.status !== 'cancelled' &&
