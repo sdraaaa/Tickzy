@@ -46,7 +46,27 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
         };
 
         const fetchedEvents = await getEvents(filters);
-        setEvents(fetchedEvents);
+
+        // Additional client-side filtering for extra safety
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const validEvents = fetchedEvents.filter(event => {
+          // Ensure event is published/approved
+          const isPublished = event.status === 'approved' ||
+                             event.status === 'published' ||
+                             event.status === 'active';
+
+          // Ensure event is not cancelled/deleted
+          const isValid = event.status !== 'cancelled' &&
+                         event.status !== 'deleted' &&
+                         event.status !== 'rejected';
+
+          return isPublished && isValid;
+        });
+
+        console.log(`📅 Dashboard: Found ${fetchedEvents.length} total events, ${validEvents.length} valid events`);
+        setEvents(validEvents);
       } catch (error) {
         console.error('Error fetching events:', error);
         setEvents([]);

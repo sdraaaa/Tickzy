@@ -23,6 +23,7 @@ export interface Event {
   date: string; // ISO date string
   time: string;
   location: string;
+  locationName: string; // Human-readable location name for map display
   price: number;
   tags: string[]; // Multiple tags for filtering
   category: string; // Primary category

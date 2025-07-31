@@ -12,6 +12,73 @@ import { getEventById } from '../services/firestore';
 import { Event, TicketTier } from '../types';
 import { getDefaultEventImage } from '../utils/defaultImage';
 import BookingModal from '../components/ui/BookingModal';
+import CustomMap from '../components/ui/CustomMap';
+
+// Helper function to safely decode location
+const decodeLocation = (encodedLocation: string): string => {
+  try {
+    return decodeURIComponent(encodedLocation);
+  } catch (error) {
+    // If decoding fails, return the original string
+    return encodedLocation;
+  }
+};
+
+// Map Preview Component
+const MapPreview: React.FC<{ locationName?: string }> = ({ locationName }) => {
+  // Check if location name is available
+  if (!locationName || !locationName.trim()) {
+    return (
+      <div className="bg-neutral-700 rounded-xl p-6 text-center">
+        <div className="text-gray-400 mb-2">
+          <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <p className="text-gray-400">Location not available</p>
+        <p className="text-gray-500 text-sm mt-1">No location name provided</p>
+      </div>
+    );
+  }
+
+  // Clean the location name and encode for URL
+  const cleanLocation = locationName.trim();
+  const encodedLocation = encodeURIComponent(cleanLocation);
+
+  // Use the simple embed URL that works without API key
+  const mapSrc = `https://maps.google.com/maps?q=${encodedLocation}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+  const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
+
+  console.log('🗺️ Map Debug Info:', {
+    originalLocation: locationName,
+    cleanLocation: cleanLocation,
+    encodedLocation: encodedLocation,
+    mapSrc: mapSrc
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Location Display */}
+      <div className="bg-neutral-700 rounded-lg p-4">
+        <div className="flex items-center space-x-3">
+          <span className="text-purple-400 text-xl">📍</span>
+          <div>
+            <h4 className="text-white font-medium">Event Location</h4>
+            <p className="text-gray-300 text-sm">{cleanLocation}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Map Component - No API Keys Required */}
+      <CustomMap
+        location={cleanLocation}
+        height="300px"
+        showBadge={true}
+      />
+    </div>
+  );
+};
 
 const EventDetail: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -244,11 +311,8 @@ const EventDetail: React.FC = () => {
               </div>
 
               <div className="flex items-center text-gray-300">
-                <svg className="w-5 h-5 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>{event.location}</span>
+                <span className="text-purple-400 mr-3 text-lg">📍</span>
+                <span>Location: {event.locationName || decodeLocation(event.location || '')}</span>
               </div>
 
               <div className="flex items-center text-gray-300">
@@ -264,6 +328,14 @@ const EventDetail: React.FC = () => {
                 </svg>
                 <span>{event.seatsLeft} of {event.capacity} seats available</span>
               </div>
+            </div>
+
+            {/* Map Preview */}
+            <div className="space-y-3">
+              <h3 className="text-xl font-semibold text-white">Event Location</h3>
+              <MapPreview
+                locationName={event.locationName || decodeLocation(event.location || '')}
+              />
             </div>
 
             {/* Ticket Tiers */}

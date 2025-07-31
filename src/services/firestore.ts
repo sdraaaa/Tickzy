@@ -46,6 +46,10 @@ export const getEvents = async (filters?: Partial<SearchFilters>): Promise<Event
       const data = doc.data();
 
       // Handle different data structures
+      const capacity = data.capacity || data.totalTickets || 0;
+      const ticketsSold = data.ticketsSold || 0;
+      const seatsLeft = data.seatsLeft !== undefined ? data.seatsLeft : Math.max(0, capacity - ticketsSold);
+
       const event: Event = {
         id: doc.id,
         title: data.title || 'Untitled Event',
@@ -54,13 +58,19 @@ export const getEvents = async (filters?: Partial<SearchFilters>): Promise<Event
         time: data.time || '00:00',
         location: typeof data.location === 'string' ? data.location :
                  data.location?._lat ? `${data.location._lat}, ${data.location._long}` : 'TBD',
+        locationName: data.locationName || data.location || 'TBD',
         price: data.price || 0,
-        capacity: data.capacity || 0,
+        capacity: capacity,
+        totalTickets: capacity,
+        seatsLeft: seatsLeft,
         image: data.image || getDefaultEventImage(),
+        bannerURL: data.bannerURL || data.image || getDefaultEventImage(),
+        hostName: data.hostName || 'Unknown Host',
+        category: data.category || 'General',
         tags: Array.isArray(data.tags) ? data.tags : [],
         hostId: data.hostId || data.host_id || '',
         status: data.status || 'pending',
-        ticketsSold: data.ticketsSold || 0,
+        ticketsSold: ticketsSold,
         revenue: data.revenue || 0,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt
@@ -69,12 +79,27 @@ export const getEvents = async (filters?: Partial<SearchFilters>): Promise<Event
       allEvents.push(event);
     });
 
-    // Filter for public display - show approved/published events
-    const publicEvents = allEvents.filter(event =>
-      event.status === 'approved' ||
-      event.status === 'published' ||
-      event.status === 'active'
-    );
+    // Filter for public display - show approved/published events that are not past
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+    const publicEvents = allEvents.filter(event => {
+      // Check if event is approved/published
+      const isApproved = event.status === 'approved' ||
+                        event.status === 'published' ||
+                        event.status === 'active';
+
+      // Check if event date hasn't passed
+      const eventDate = new Date(event.date);
+      const isUpcoming = eventDate >= now;
+
+      // Check if event is not cancelled or deleted
+      const isNotCancelled = event.status !== 'cancelled' &&
+                            event.status !== 'deleted' &&
+                            event.status !== 'rejected';
+
+      return isApproved && isUpcoming && isNotCancelled;
+    });
 
 
 
@@ -126,6 +151,10 @@ export const getAllEvents = async (): Promise<Event[]> => {
     querySnapshot.forEach((doc) => {
       const data = doc.data();
 
+      const capacity = data.capacity || data.totalTickets || 0;
+      const ticketsSold = data.ticketsSold || 0;
+      const seatsLeft = data.seatsLeft !== undefined ? data.seatsLeft : Math.max(0, capacity - ticketsSold);
+
       const event: Event = {
         id: doc.id,
         title: data.title || 'Untitled Event',
@@ -134,13 +163,19 @@ export const getAllEvents = async (): Promise<Event[]> => {
         time: data.time || '00:00',
         location: typeof data.location === 'string' ? data.location :
                  data.location?._lat ? `${data.location._lat}, ${data.location._long}` : 'TBD',
+        locationName: data.locationName || data.location || 'TBD',
         price: data.price || 0,
-        capacity: data.capacity || 0,
+        capacity: capacity,
+        totalTickets: capacity,
+        seatsLeft: seatsLeft,
         image: data.image || getDefaultEventImage(),
+        bannerURL: data.bannerURL || data.image || getDefaultEventImage(),
+        hostName: data.hostName || 'Unknown Host',
+        category: data.category || 'General',
         tags: Array.isArray(data.tags) ? data.tags : [],
         hostId: data.hostId || data.host_id || '',
         status: data.status || 'pending',
-        ticketsSold: data.ticketsSold || 0,
+        ticketsSold: ticketsSold,
         revenue: data.revenue || 0,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt
@@ -162,6 +197,10 @@ export const getEventById = async (eventId: string): Promise<Event | null> => {
     const eventDoc = await getDoc(doc(db, 'events', eventId));
     if (eventDoc.exists()) {
       const data = eventDoc.data();
+      const capacity = data.capacity || data.totalTickets || 0;
+      const ticketsSold = data.ticketsSold || 0;
+      const seatsLeft = data.seatsLeft !== undefined ? data.seatsLeft : Math.max(0, capacity - ticketsSold);
+
       return {
         id: eventDoc.id,
         title: data.title || 'Untitled Event',
@@ -170,13 +209,19 @@ export const getEventById = async (eventId: string): Promise<Event | null> => {
         time: data.time || '00:00',
         location: typeof data.location === 'string' ? data.location :
                  data.location?._lat ? `${data.location._lat}, ${data.location._long}` : 'TBD',
+        locationName: data.locationName || data.location || 'TBD',
         price: data.price || 0,
-        capacity: data.capacity || 0,
+        capacity: capacity,
+        totalTickets: capacity,
+        seatsLeft: seatsLeft,
         image: data.image || getDefaultEventImage(),
+        bannerURL: data.bannerURL || data.image || getDefaultEventImage(),
+        hostName: data.hostName || 'Unknown Host',
+        category: data.category || 'General',
         tags: Array.isArray(data.tags) ? data.tags : [],
         hostId: data.hostId || data.host_id || '',
         status: data.status || 'pending',
-        ticketsSold: data.ticketsSold || 0,
+        ticketsSold: ticketsSold,
         revenue: data.revenue || 0,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt
@@ -571,12 +616,23 @@ export const getUserNotifications = async (userId: string): Promise<Notification
       return [];
     }
 
-    // Temporarily remove orderBy until index is built
-    const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', userId),
-      limit(50)
-    );
+    // Try with orderBy first, fallback to without if index not ready
+    let q;
+    try {
+      q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
+    } catch (indexError) {
+      console.log('🔔 Index not ready, using query without orderBy');
+      q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId),
+        limit(50)
+      );
+    }
 
     console.log('🔔 Executing notifications query...');
     const querySnapshot = await getDocs(q);

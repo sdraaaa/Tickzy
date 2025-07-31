@@ -22,8 +22,36 @@ const EventShowcase: React.FC = () => {
       setLoading(true);
       try {
         const fetchedEvents = await getEvents();
+
+        // Additional client-side filtering for extra safety
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const validEvents = fetchedEvents.filter(event => {
+          // Ensure event is published/approved
+          const isPublished = event.status === 'approved' ||
+                             event.status === 'published' ||
+                             event.status === 'active';
+
+          // Ensure event date hasn't passed
+          const eventDate = new Date(event.date);
+          const isUpcoming = eventDate >= now;
+
+          // Ensure event is not cancelled/deleted
+          const isValid = event.status !== 'cancelled' &&
+                         event.status !== 'deleted' &&
+                         event.status !== 'rejected';
+
+          // Don't filter by seats on landing page - let users see all events
+          // They'll get proper validation when trying to book
+
+          return isPublished && isUpcoming && isValid;
+        });
+
+        console.log(`📅 Landing page: Found ${fetchedEvents.length} total events, ${validEvents.length} valid events`);
+
         // Limit to 6 events for the landing page showcase
-        setEvents(fetchedEvents.slice(0, 6));
+        setEvents(validEvents.slice(0, 6));
       } catch (error) {
         console.error('Error fetching events for landing page:', error);
         setEvents([]);
@@ -40,14 +68,62 @@ const EventShowcase: React.FC = () => {
     navigate(`/event/${eventId}`);
   };
 
+  // Manual refresh function for testing
+  const refreshEvents = async () => {
+    setLoading(true);
+    try {
+      const fetchedEvents = await getEvents();
+
+      // Additional client-side filtering for extra safety
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      const validEvents = fetchedEvents.filter(event => {
+        const isPublished = event.status === 'approved' ||
+                           event.status === 'published' ||
+                           event.status === 'active';
+
+        const eventDate = new Date(event.date);
+        const isUpcoming = eventDate >= now;
+
+        const isValid = event.status !== 'cancelled' &&
+                       event.status !== 'deleted' &&
+                       event.status !== 'rejected';
+
+        // Don't filter by seats on landing page - let users see all events
+
+        return isPublished && isUpcoming && isValid;
+      });
+
+      console.log(`🔄 Manual refresh: Found ${fetchedEvents.length} total events, ${validEvents.length} valid events`);
+      setEvents(validEvents.slice(0, 6));
+    } catch (error) {
+      console.error('Error refreshing events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section className="py-16 bg-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Discover Amazing Events
-          </h2>
+          <div className="flex items-center justify-center mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-white">
+              Discover Amazing Events
+            </h2>
+            <button
+              onClick={refreshEvents}
+              disabled={loading}
+              className="ml-4 p-2 text-gray-400 hover:text-white transition-colors duration-200 disabled:opacity-50"
+              title="Refresh events"
+            >
+              <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
             From concerts to conferences, workshops to festivals - find your next unforgettable experience
           </p>

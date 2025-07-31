@@ -96,6 +96,21 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
     }
   };
 
+  // Test notification creation (temporary for debugging)
+  const createTestNotification = async () => {
+    if (!user) return;
+
+    console.log('🧪 Creating test notification...');
+    try {
+      const result = await (window as any).testNotification(user.uid);
+      console.log('🧪 Test notification result:', result);
+      // Refresh notifications after creating test
+      await refreshNotifications();
+    } catch (error) {
+      console.error('❌ Error creating test notification:', error);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -365,6 +380,13 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
                           {unreadCount > 0 && (
                             <span className="text-xs text-gray-400">{unreadCount} unread</span>
                           )}
+                          <button
+                            onClick={createTestNotification}
+                            className="text-gray-400 hover:text-white transition-colors text-xs"
+                            title="Create test notification"
+                          >
+                            Test
+                          </button>
                           <button
                             onClick={refreshNotifications}
                             className="text-gray-400 hover:text-white transition-colors"

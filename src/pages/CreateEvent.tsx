@@ -14,13 +14,14 @@ import PDFUpload from '../components/ui/PDFUpload';
 import { generatePDFPath } from '../services/storage';
 import UnifiedNavbar from '../components/ui/UnifiedNavbar';
 import { notificationService } from '../services/notificationService';
+import { useGlobalToast } from '../contexts/ToastContext';
 
 interface EventFormData {
   title: string;
   description: string;
   date: string;
   time: string;
-  locationName: string;
+  locationName: string; // Full address or location name for map display
   price: number;
   seatsLeft: number;
   bannerURL: string;
@@ -64,6 +65,7 @@ const CreateEvent: React.FC = () => {
     // The search will be handled by the dashboard component
   };
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showSuccess, showError } = useGlobalToast();
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
@@ -107,6 +109,21 @@ const CreateEvent: React.FC = () => {
       .map(tag => tag.trim().toLowerCase())
       .filter(tag => tag.length > 0)
       .slice(0, 5); // Limit to 5 tags maximum
+  };
+
+  // Encode location for safe storage
+  const encodeLocation = (location: string): string => {
+    return encodeURIComponent(location.trim());
+  };
+
+  // Decode location for display
+  const decodeLocation = (encodedLocation: string): string => {
+    try {
+      return decodeURIComponent(encodedLocation);
+    } catch (error) {
+      // If decoding fails, return the original string
+      return encodedLocation;
+    }
   };
 
   const handleVenueProofUpload = (downloadURL: string) => {
@@ -170,6 +187,7 @@ const CreateEvent: React.FC = () => {
       // Parse tags for logging
       const eventTags = parseTags(formData.tags);
       console.log('🏷️ Event tags to be saved:', eventTags);
+      console.log('📍 Location name to be saved:', formData.locationName);
 
       // Create event document in Firestore
       const eventDoc = await addDoc(collection(db, 'events'), {
@@ -177,8 +195,8 @@ const CreateEvent: React.FC = () => {
         description: formData.description,
         date: formData.date,
         time: formData.time,
-        location: formData.locationName, // Using 'location' to match existing schema
-        locationName: formData.locationName,
+        location: formData.locationName, // Store clean location name
+        locationName: formData.locationName, // Store original location name for map display
         price: formData.price,
         capacity: formData.seatsLeft, // Using 'capacity' to match existing schema
         seatsLeft: formData.seatsLeft,
@@ -209,10 +227,18 @@ const CreateEvent: React.FC = () => {
       }
 
       // Show success message and redirect
-      alert('Event created successfully! It will be reviewed by admin before publishing.');
+      showSuccess(
+        'Event Created Successfully!',
+        'Your event has been submitted for review. You\'ll be notified once it\'s approved.'
+      );
+      console.log('✅ Event created successfully');
       navigate('/dashboard');
     } catch (error) {
-      alert('Failed to create event. Please try again.');
+      console.error('❌ Error creating event:', error);
+      showError(
+        'Failed to Create Event',
+        'Something went wrong. Please check your information and try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -262,6 +288,26 @@ const CreateEvent: React.FC = () => {
                   required
                 />
                 {errors.title && <p className="text-red-400 text-sm mt-1">{errors.title}</p>}
+              </div>
+
+              {/* Event Location */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-white mb-2">
+                  Event Location <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="locationName"
+                  value={formData.locationName}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-neutral-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter full address or location (e.g., Charminar, Hyderabad)"
+                  required
+                />
+                {errors.locationName && <p className="text-red-400 text-sm mt-1">{errors.locationName}</p>}
+                <p className="text-gray-400 text-xs mt-1">
+                  Be specific for better map display. Include city name for best results.
+                </p>
               </div>
 
               {/* Description */}
@@ -314,22 +360,7 @@ const CreateEvent: React.FC = () => {
                 {errors.time && <p className="text-red-400 text-sm mt-1">{errors.time}</p>}
               </div>
 
-              {/* Location */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-white mb-2">
-                  Location <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="locationName"
-                  value={formData.locationName}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-neutral-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter venue location"
-                  required
-                />
-                {errors.locationName && <p className="text-red-400 text-sm mt-1">{errors.locationName}</p>}
-              </div>
+
 
               {/* Price */}
               <div>
