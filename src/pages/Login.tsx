@@ -56,8 +56,10 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
+      console.log('Attempting sign in with email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      console.log('Sign in successful for user:', user.email);
 
       // Check if email is verified
       if (!user.emailVerified) {
@@ -67,6 +69,8 @@ const Login: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Email sign in error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       setError(getErrorMessage(error.code));
     } finally {
       setLoading(false);
@@ -118,6 +122,8 @@ const Login: React.FC = () => {
         return 'No account found with this email address';
       case 'auth/wrong-password':
         return 'Incorrect password';
+      case 'auth/invalid-credential':
+        return 'Invalid email or password. Please check your credentials and try again';
       case 'auth/email-already-in-use':
         return 'An account with this email already exists';
       case 'auth/weak-password':
@@ -126,6 +132,10 @@ const Login: React.FC = () => {
         return 'Invalid email address';
       case 'auth/too-many-requests':
         return 'Too many failed attempts. Please try again later';
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Please contact support';
+      case 'auth/operation-not-allowed':
+        return 'Email/password sign-in is not enabled. Please contact support';
       default:
         return 'An error occurred. Please try again';
     }

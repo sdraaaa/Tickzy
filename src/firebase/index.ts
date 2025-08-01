@@ -51,4 +51,21 @@ try {
   provider = null;
 }
 
+// Debug function to check Firebase configuration
+export const debugFirebaseConfig = () => {
+  console.log('🔧 Firebase Configuration Debug:');
+  console.log('API Key:', firebaseConfig.apiKey ? '✅ Set' : '❌ Missing');
+  console.log('Auth Domain:', firebaseConfig.authDomain);
+  console.log('Project ID:', firebaseConfig.projectId);
+  console.log('Storage Bucket:', firebaseConfig.storageBucket);
+  console.log('Auth initialized:', auth ? '✅ Yes' : '❌ No');
+  console.log('Firestore initialized:', db ? '✅ Yes' : '❌ No');
+  return firebaseConfig;
+};
+
+// Export for console debugging
+if (typeof window !== 'undefined') {
+  (window as any).debugFirebaseConfig = debugFirebaseConfig;
+}
+
 export { auth, db, storage, provider };
