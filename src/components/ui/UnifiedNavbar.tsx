@@ -20,6 +20,7 @@ interface UnifiedNavbarProps {
 const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView = null, onSearch }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -351,6 +352,26 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
 
           {/* Right side - User menu */}
           <div className="flex items-center space-x-4 ml-auto">
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                aria-expanded="false"
+              >
+                <span className="sr-only">Open main menu</span>
+                {!mobileMenuOpen ? (
+                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                ) : (
+                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
             {/* Notifications Bell - Only for non-admin users */}
             {userData?.role !== 'admin' && (
               <div className="relative">
@@ -548,12 +569,16 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
       </div>
 
       {/* Mobile Navigation */}
-      <div className="md:hidden">
-        <div className="px-2 pt-2 pb-3 space-y-1 bg-neutral-800">
+      {mobileMenuOpen && (
+        <div className="md:hidden">
+          <div className="px-2 pt-2 pb-3 space-y-1 bg-neutral-800">
           {navItems.map((item) => (
             <button
               key={item.name}
-              onClick={() => handleNavClick(item.view)}
+              onClick={() => {
+                handleNavClick(item.view);
+                setMobileMenuOpen(false);
+              }}
               className={`block w-full text-left px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 ${
                 item.current
                   ? 'text-white bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg'
@@ -571,7 +596,10 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
               return (
                 <button
                   key={action.name}
-                  onClick={() => navigate(action.path)}
+                  onClick={() => {
+                    navigate(action.path);
+                    setMobileMenuOpen(false);
+                  }}
                   className={`group relative w-full px-6 py-3 font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl ${
                     isPrimary
                       ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-400 text-white border-2 border-emerald-400/30 hover:border-emerald-300/50 shadow-emerald-500/25 hover:shadow-emerald-400/40'
@@ -670,16 +698,18 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
               </form>
             </div>
           )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Click outside to close dropdowns */}
-      {(dropdownOpen || notificationsOpen) && (
+      {(dropdownOpen || notificationsOpen || mobileMenuOpen) && (
         <div
           className="fixed inset-0 z-40"
           onClick={() => {
             setDropdownOpen(false);
             setNotificationsOpen(false);
+            setMobileMenuOpen(false);
           }}
         />
       )}
