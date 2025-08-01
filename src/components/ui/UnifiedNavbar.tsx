@@ -20,7 +20,7 @@ interface UnifiedNavbarProps {
 const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView = null, onSearch }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -227,19 +227,20 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
               Tickzy
             </button>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-6">
+            {/* Navigation - Always visible on all devices */}
+            <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6">
               {navItems.map((item) => (
                 <button
                   key={item.name}
                   onClick={() => handleNavClick(item.view)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform ${
+                  className={`px-2 sm:px-3 md:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-300 transform ${
                     item.current
                       ? 'text-white bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg scale-105'
                       : 'text-gray-300 hover:text-white hover:bg-gray-800 hover:scale-105'
                   }`}
                 >
-                  {item.name}
+                  <span className="hidden sm:inline">{item.name}</span>
+                  <span className="sm:hidden">{item.name.split(' ')[0]}</span>
                 </button>
               ))}
 
@@ -250,16 +251,16 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
                   <button
                     key={action.name}
                     onClick={() => navigate(action.path)}
-                    className={`group relative px-6 py-2.5 font-bold rounded-xl transition-all duration-300 transform hover:scale-110 shadow-xl ${
+                    className={`group relative px-2 sm:px-4 md:px-6 py-2 sm:py-2.5 text-xs sm:text-sm md:text-base font-bold rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-110 shadow-xl ${
                       isPrimary
                         ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-400 text-white border-2 border-emerald-400/30 hover:border-emerald-300/50 shadow-emerald-500/25 hover:shadow-emerald-400/40'
                         : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border border-indigo-500/20'
                     }`}
                     title={action.description}
                   >
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
                       <svg
-                        className={`w-5 h-5 ${isPrimary ? 'drop-shadow-sm' : ''}`}
+                        className={`w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 ${isPrimary ? 'drop-shadow-sm' : ''}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -272,7 +273,10 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         )}
                       </svg>
-                      <span className={isPrimary ? 'tracking-wide' : ''}>{action.name}</span>
+                      <span className={`${isPrimary ? 'tracking-wide' : ''} hidden xs:inline`}>{action.name}</span>
+                      <span className={`${isPrimary ? 'tracking-wide' : ''} xs:hidden`}>
+                        {action.name.split(' ')[0]}
+                      </span>
                     </div>
 
                     {/* Enhanced glow effect for primary button */}
@@ -298,7 +302,7 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
 
           {/* Center - Search Bar (only for non-admin users) */}
           {userData?.role !== 'admin' && (
-            <div className="flex-1 max-w-md mx-6 hidden lg:block">
+            <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md mx-2 sm:mx-4 md:mx-6">
               <form onSubmit={handleSearchSubmit} className="relative">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -325,7 +329,7 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
                     onFocus={() => setSearchFocused(true)}
                     onBlur={() => setSearchFocused(false)}
                     placeholder="Search events..."
-                    className={`block w-full pl-9 pr-4 py-1.5 text-sm border rounded-lg bg-neutral-800 text-white placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    className={`block w-full pl-9 pr-4 py-1.5 text-xs sm:text-sm border rounded-lg bg-neutral-800 text-white placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                       searchFocused
                         ? 'border-purple-500 bg-neutral-700'
                         : 'border-gray-600 hover:border-gray-500'
@@ -352,25 +356,7 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
 
           {/* Right side - User menu */}
           <div className="flex items-center space-x-4 ml-auto">
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                aria-expanded="false"
-              >
-                <span className="sr-only">Open main menu</span>
-                {!mobileMenuOpen ? (
-                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                ) : (
-                  <svg className="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                )}
-              </button>
-            </div>
+
 
             {/* Notifications Bell - Only for non-admin users */}
             {userData?.role !== 'admin' && (
@@ -568,148 +554,15 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      {mobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 bg-neutral-800">
-          {navItems.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => {
-                handleNavClick(item.view);
-                setMobileMenuOpen(false);
-              }}
-              className={`block w-full text-left px-4 py-3 rounded-lg text-base font-medium transition-all duration-300 ${
-                item.current
-                  ? 'text-white bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg'
-                  : 'text-gray-300 hover:text-white hover:bg-gray-700'
-              }`}
-            >
-              {item.name}
-            </button>
-          ))}
 
-          {/* Mobile Role-based Action Buttons */}
-          <div className="pt-2 space-y-2 border-t border-gray-700 mt-3">
-            {roleActions.map((action) => {
-              const isPrimary = action.style === 'primary';
-              return (
-                <button
-                  key={action.name}
-                  onClick={() => {
-                    navigate(action.path);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`group relative w-full px-6 py-3 font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl ${
-                    isPrimary
-                      ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-400 text-white border-2 border-emerald-400/30 hover:border-emerald-300/50 shadow-emerald-500/25 hover:shadow-emerald-400/40'
-                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border border-indigo-500/20'
-                  }`}
-                  title={action.description}
-                >
-                  <div className="flex items-center justify-center space-x-2">
-                    <svg
-                      className={`w-5 h-5 ${isPrimary ? 'drop-shadow-sm' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      {isPrimary ? (
-                        // Plus icon for Create Event with thicker stroke
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      ) : (
-                        // Arrow up icon for Become Host
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      )}
-                    </svg>
-                    <span className={isPrimary ? 'tracking-wide' : ''}>{action.name}</span>
-                  </div>
-
-                  {/* Enhanced glow effect for primary button */}
-                  <div className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300 ${
-                    isPrimary
-                      ? 'bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 blur-sm'
-                      : 'bg-gradient-to-r from-indigo-400 to-purple-400'
-                  }`}></div>
-
-                  {/* Additional sparkle effect for primary button */}
-                  {isPrimary && (
-                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                      <div className="absolute top-1 right-1 w-1 h-1 bg-white rounded-full animate-pulse"></div>
-                      <div className="absolute bottom-1 left-1 w-1 h-1 bg-white rounded-full animate-pulse delay-300"></div>
-                      <div className="absolute top-1/2 left-1/2 w-0.5 h-0.5 bg-white rounded-full animate-pulse delay-150"></div>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Mobile Search Bar (only for non-admin users) */}
-          {userData?.role !== 'admin' && (
-            <div className="pt-2 border-t border-gray-700 mt-3">
-              <form onSubmit={handleSearchSubmit} className="relative">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      className={`h-4 w-4 transition-colors duration-200 ${
-                        searchFocused ? 'text-purple-400' : 'text-gray-400'
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    onFocus={() => setSearchFocused(true)}
-                    onBlur={() => setSearchFocused(false)}
-                    placeholder="Search events..."
-                    className={`block w-full pl-9 pr-4 py-2.5 text-sm border rounded-lg bg-neutral-700 text-white placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                      searchFocused
-                        ? 'border-purple-500 bg-neutral-600'
-                        : 'border-gray-600 hover:border-gray-500'
-                    }`}
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery('');
-                        if (onSearch) onSearch('');
-                      }}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white transition-colors duration-200"
-                    >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              </form>
-            </div>
-          )}
-          </div>
-        </div>
-      )}
 
       {/* Click outside to close dropdowns */}
-      {(dropdownOpen || notificationsOpen || mobileMenuOpen) && (
+      {(dropdownOpen || notificationsOpen) && (
         <div
           className="fixed inset-0 z-40"
           onClick={() => {
             setDropdownOpen(false);
             setNotificationsOpen(false);
-            setMobileMenuOpen(false);
           }}
         />
       )}
