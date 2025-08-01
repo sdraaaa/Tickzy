@@ -15,6 +15,7 @@ import { generatePDFPath } from '../services/storage';
 import UnifiedNavbar from '../components/ui/UnifiedNavbar';
 import { notificationService } from '../services/notificationService';
 import { useGlobalToast } from '../contexts/ToastContext';
+import CustomMap from '../components/ui/CustomMap';
 
 interface EventFormData {
   title: string;
@@ -308,6 +309,22 @@ const CreateEvent: React.FC = () => {
                 <p className="text-gray-400 text-xs mt-1">
                   Be specific for better map display. Include city name for best results.
                 </p>
+
+                {/* Real-time Map Preview */}
+                {formData.locationName.trim() && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-white mb-2">
+                      📍 Location Preview
+                    </label>
+                    <div className="bg-neutral-800 rounded-lg p-4 border border-gray-600">
+                      <CustomMap
+                        location={formData.locationName}
+                        height="300px"
+                        className="rounded-lg"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Description */}
