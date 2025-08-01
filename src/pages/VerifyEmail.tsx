@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { sendEmailVerification, reload } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
+import LandingNavbar from '../components/Landing/LandingNavbar';
 
 const VerifyEmail: React.FC = () => {
   const { user } = useAuth();
@@ -98,8 +99,12 @@ const VerifyEmail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-black">
+      {/* Navigation */}
+      <LandingNavbar />
+
+      <div className="flex items-center justify-center px-4 py-8">
+        <div className="max-w-md w-full">
         <div className="bg-neutral-800 rounded-xl border border-gray-700 p-8">
           {/* Header */}
           <div className="text-center mb-8">
@@ -168,6 +173,7 @@ const VerifyEmail: React.FC = () => {
               </a>
             </p>
           </div>
+        </div>
         </div>
       </div>
     </div>

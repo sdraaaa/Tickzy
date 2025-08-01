@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getEvents } from '../services/firestore';
 import { Event } from '../types';
 import LandingNavbar from '../components/Landing/LandingNavbar';
+import UnifiedNavbar from '../components/ui/UnifiedNavbar';
 
 const ExploreEvents: React.FC = () => {
   const navigate = useNavigate();
@@ -72,7 +73,18 @@ const ExploreEvents: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Navigation */}
-      <LandingNavbar />
+      {user ? (
+        <UnifiedNavbar
+          onNavigate={(view) => {
+            if (view === 'my-dashboard') {
+              navigate('/dashboard');
+            }
+          }}
+          currentView="explore"
+        />
+      ) : (
+        <LandingNavbar />
+      )}
 
       {/* Header */}
       <div className="bg-neutral-900 border-b border-gray-800">

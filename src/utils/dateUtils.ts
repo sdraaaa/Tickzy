@@ -13,11 +13,40 @@
  */
 export const isEventPast = (eventDate: string, eventTime: string): boolean => {
   try {
-    // Create a complete datetime object for the event
-    const eventDateTime = new Date(`${eventDate}T${eventTime}:00`);
+    // Handle different date formats
+    let eventDateTime: Date;
+
+    // If eventDate is already an ISO string with time, use it directly
+    if (eventDate.includes('T')) {
+      eventDateTime = new Date(eventDate);
+    } else {
+      // Otherwise, combine date and time
+      // Ensure we have proper format for date (YYYY-MM-DD)
+      let formattedDate = eventDate;
+      if (!eventDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Try to parse and reformat if it's not in YYYY-MM-DD format
+        const parsedDate = new Date(eventDate);
+        if (!isNaN(parsedDate.getTime())) {
+          formattedDate = parsedDate.toISOString().split('T')[0];
+        }
+      }
+
+      // Ensure we have proper format for time (HH:MM)
+      let formattedTime = eventTime || '00:00';
+      if (!formattedTime.match(/^\d{2}:\d{2}$/)) {
+        formattedTime = '00:00';
+      }
+
+      eventDateTime = new Date(`${formattedDate}T${formattedTime}:00`);
+    }
+
+    // Check if the date is valid
+    if (isNaN(eventDateTime.getTime())) {
+      console.error('❌ Invalid date created:', { eventDate, eventTime, eventDateTime });
+      return false;
+    }
+
     const now = new Date();
-    
-    // Event is past if the complete datetime has passed
     return eventDateTime < now;
   } catch (error) {
     console.error('Error parsing event date/time:', { eventDate, eventTime, error });
@@ -103,3 +132,40 @@ export const formatEventDateTime = (eventDate: string, eventTime: string): strin
     return `${eventDate} at ${eventTime}`;
   }
 };
+
+/**
+ * Test function to verify date logic is working correctly
+ * Call this from browser console: window.testDateLogic()
+ */
+export const testDateLogic = () => {
+  console.log('🧪 Testing date logic...');
+
+  // Test future event (should not be past)
+  const futureDate = '2025-07-31';
+  const futureTime = '20:00';
+  const isFuturePast = isEventPast(futureDate, futureTime);
+  console.log(`Future event (${futureDate} ${futureTime}):`, isFuturePast ? '❌ INCORRECTLY marked as past' : '✅ Correctly marked as future');
+
+  // Test past event (should be past)
+  const pastDate = '2023-01-01';
+  const pastTime = '12:00';
+  const isPastPast = isEventPast(pastDate, pastTime);
+  console.log(`Past event (${pastDate} ${pastTime}):`, isPastPast ? '✅ Correctly marked as past' : '❌ INCORRECTLY marked as future');
+
+  // Test today's event in the future (should not be past)
+  const today = new Date().toISOString().split('T')[0];
+  const futureTimeToday = '23:59';
+  const isTodayFuturePast = isEventPast(today, futureTimeToday);
+  console.log(`Today's future event (${today} ${futureTimeToday}):`, isTodayFuturePast ? '❌ INCORRECTLY marked as past' : '✅ Correctly marked as future');
+
+  return {
+    futureEventCorrect: !isFuturePast,
+    pastEventCorrect: isPastPast,
+    todayFutureEventCorrect: !isTodayFuturePast
+  };
+};
+
+// Export for console testing
+if (typeof window !== 'undefined') {
+  (window as any).testDateLogic = testDateLogic;
+}

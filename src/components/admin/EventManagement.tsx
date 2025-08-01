@@ -11,6 +11,7 @@ import { Event } from '../../types';
 import { getDefaultEventImage } from '../../utils/defaultImage';
 import EventReviewModal from './EventReviewModal';
 import { notificationService } from '../../services/notificationService';
+import { updateEventStatuses } from '../../services/eventStatusService';
 
 interface EventWithHost extends Event {
   hostEmail?: string;
@@ -27,6 +28,7 @@ const EventManagement: React.FC = () => {
   const [updating, setUpdating] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventWithHost | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [refreshingStatuses, setRefreshingStatuses] = useState(false);
 
   useEffect(() => {
     fetchEvents();
@@ -129,7 +131,7 @@ const EventManagement: React.FC = () => {
     }
   };
 
-  const updateEventStatus = async (eventId: string, newStatus: 'pending' | 'approved' | 'rejected' | 'cancelled') => {
+  const updateEventStatus = async (eventId: string, newStatus: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'published') => {
     setUpdating(eventId);
     try {
       await updateDoc(doc(db, 'events', eventId), {
@@ -142,7 +144,7 @@ const EventManagement: React.FC = () => {
         event.id === eventId ? { ...event, status: newStatus } : event
       ));
 
-
+      console.log(`✅ Updated event ${eventId} status to: ${newStatus}`);
     } catch (error) {
       console.error('Error updating event status:', error);
     } finally {
@@ -164,6 +166,21 @@ const EventManagement: React.FC = () => {
     setEvents(events.map(event =>
       event.id === eventId ? { ...event, status: newStatus } : event
     ));
+  };
+
+  const refreshEventStatuses = async () => {
+    setRefreshingStatuses(true);
+    try {
+      console.log('🔄 Manually refreshing event statuses...');
+      await updateEventStatuses();
+      // Refresh the events list to show updated statuses
+      await fetchEvents();
+      console.log('✅ Event statuses refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing event statuses:', error);
+    } finally {
+      setRefreshingStatuses(false);
+    }
   };
 
   const deleteEvent = async (eventId: string) => {
@@ -202,8 +219,10 @@ const EventManagement: React.FC = () => {
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'approved': return 'bg-green-600 text-white';
+      case 'published': return 'bg-green-600 text-white';
       case 'rejected': return 'bg-red-600 text-white';
       case 'cancelled': return 'bg-gray-600 text-white';
+      case 'completed': return 'bg-gray-500 text-white';
       case 'pending': return 'bg-yellow-600 text-white';
       default: return 'bg-purple-600 text-white';
     }
@@ -222,12 +241,21 @@ const EventManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Event Management</h2>
-        <button
-          onClick={fetchEvents}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-        >
-          Refresh
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={refreshEventStatuses}
+            disabled={refreshingStatuses}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50"
+          >
+            {refreshingStatuses ? 'Updating...' : 'Update Statuses'}
+          </button>
+          <button
+            onClick={fetchEvents}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="bg-neutral-800 rounded-xl border border-gray-700 overflow-hidden">
@@ -333,6 +361,16 @@ const EventManagement: React.FC = () => {
                           className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors duration-200"
                         >
                           Cancel
+                        </button>
+                      )}
+
+                      {event.status === 'completed' && (
+                        <button
+                          onClick={() => updateEventStatus(event.id, 'approved')}
+                          disabled={updating === event.id}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors duration-200"
+                        >
+                          Reactivate
                         </button>
                       )}
 

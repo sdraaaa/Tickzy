@@ -28,8 +28,8 @@ const CustomMap: React.FC<CustomMapProps> = ({
   const encodedLocation = encodeURIComponent(location);
   const mapsSearchUrl = `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
 
-  // Since iframe embeds have CORS issues, we'll use the designed map by default
-  // and provide a prominent "Open in Google Maps" button
+  // Use the working Google Maps embed URL (same as EventDetail page)
+  const embedUrl = `https://maps.google.com/maps?q=${encodedLocation}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
   const handleMapClick = () => {
     window.open(mapsSearchUrl, '_blank');
@@ -112,21 +112,43 @@ const CustomMap: React.FC<CustomMapProps> = ({
 
   return (
     <div className={`rounded-xl overflow-hidden shadow-md bg-gradient-to-br from-neutral-700 to-neutral-800 ${className}`}>
-      {/* Use the designed map with enhanced interactivity */}
-      <DesignedMap />
+      {!mapError ? (
+        <div className="relative" style={{ height }}>
+          {/* Real Google Maps Embed */}
+          <iframe
+            src={embedUrl}
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            onError={handleIframeError}
+            className="rounded-xl"
+          />
 
-      {/* Enhanced "Open in Google Maps" button */}
-      {showBadge && (
-        <div className="absolute top-4 right-4 z-10">
-          <button
+          {/* Overlay for click handling */}
+          <div
+            className="absolute inset-0 bg-transparent cursor-pointer group"
             onClick={handleMapClick}
-            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            title="Click to open in Google Maps"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-            Open in Google Maps
-          </button>
+            {/* Corner Badge */}
+            {showBadge && (
+              <div className="absolute top-4 right-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg opacity-90 group-hover:opacity-100 transition-opacity">
+                Open in Google Maps
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <DesignedMap />
+      )}
+
+      {/* Fallback badge for designed map */}
+      {mapError && showBadge && (
+        <div className="absolute top-4 right-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+          Interactive Map
         </div>
       )}
     </div>

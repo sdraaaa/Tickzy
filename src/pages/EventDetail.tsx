@@ -13,6 +13,9 @@ import { Event, TicketTier } from '../types';
 import { getDefaultEventImage } from '../utils/defaultImage';
 import BookingModal from '../components/ui/BookingModal';
 import CustomMap from '../components/ui/CustomMap';
+import UnifiedNavbar from '../components/ui/UnifiedNavbar';
+import LandingNavbar from '../components/Landing/LandingNavbar';
+import { isEventPast } from '../utils/dateUtils';
 
 // Helper function to safely decode location
 const decodeLocation = (encodedLocation: string): string => {
@@ -145,11 +148,9 @@ const EventDetail: React.FC = () => {
     if (!event) return false;
     if (event.status === 'cancelled') return false;
     if (event.seatsLeft <= 0) return false;
-    
-    // Check if event date has passed
-    const eventDate = new Date(event.date);
-    const now = new Date();
-    if (eventDate < now) return false;
+
+    // Check if event date/time has passed using centralized logic
+    if (isEventPast(event.date, event.time)) return false;
 
     // Check ticket tier sale window if selected
     if (selectedTier) {
@@ -203,9 +204,8 @@ const EventDetail: React.FC = () => {
       );
     }
 
-    const eventDate = new Date(event.date);
-    const now = new Date();
-    if (eventDate < now) {
+    // Use centralized date/time comparison logic
+    if (isEventPast(event.date, event.time)) {
       return (
         <span className="bg-gray-600 text-white px-4 py-2 rounded-full text-sm font-medium">
           Event Over
@@ -247,6 +247,22 @@ const EventDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-black">
       {/* Navigation */}
+      {user ? (
+        <UnifiedNavbar
+          onNavigate={(view) => {
+            if (view === 'explore') {
+              navigate('/explore-events');
+            } else if (view === 'my-dashboard') {
+              navigate('/dashboard');
+            }
+          }}
+          currentView="explore"
+        />
+      ) : (
+        <LandingNavbar />
+      )}
+
+      {/* Back Button */}
       <div className="bg-neutral-900 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <button
