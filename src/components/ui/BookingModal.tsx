@@ -43,6 +43,12 @@ const BookingModal: React.FC<BookingModalProps> = ({
   const handleBooking = async () => {
     if (!user || !userData) return;
 
+    // Additional validation: prevent hosts from booking their own events
+    if (userData.role === 'host' && event.hostId === user.uid) {
+      setError('You cannot book tickets for your own event');
+      return;
+    }
+
     // Check if event date has passed
     const eventDate = new Date(event.date);
     const now = new Date();

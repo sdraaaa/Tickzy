@@ -170,6 +170,24 @@ const EventDetail: React.FC = () => {
       return;
     }
 
+    // Check if user has permission to book events
+    if (!userData) {
+      showError('User data not loaded');
+      return;
+    }
+
+    // Allow both users and hosts to book events, but prevent hosts from booking their own events
+    if (userData.role === 'host' && event?.hostId === user.uid) {
+      showError('You cannot book tickets for your own event');
+      return;
+    }
+
+    // Only allow users and hosts to book events (exclude admins for now)
+    if (userData.role !== 'user' && userData.role !== 'host') {
+      showError('Only users and hosts can book events');
+      return;
+    }
+
     if (!isEventBookable()) {
       showError('This event is not available for booking');
       return;
@@ -414,40 +432,59 @@ const EventDetail: React.FC = () => {
 
             {/* Booking Section */}
             <div className="space-y-4">
-              {isEventBookable() ? (
-                <div className="space-y-4">
-                  <div className="bg-neutral-800 p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Total Cost:</span>
-                      <span className="text-white text-xl font-semibold">
-                        {selectedTier
-                          ? formatPrice(selectedTier.price * ticketCount)
-                          : formatPrice(event.price * ticketCount)
-                        }
-                      </span>
-                    </div>
-                  </div>
+              {(() => {
+                // Check if host is trying to book their own event
+                const isOwnEvent = userData?.role === 'host' && event?.hostId === user?.uid;
+                const canBook = isEventBookable() && !isOwnEvent;
 
-                  <button
-                    onClick={handleBookTicket}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 rounded-lg transition-colors text-lg"
-                  >
-                    {user ? 'Book Tickets' : 'Sign In to Book'}
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <div className="text-gray-400 mb-2">This event is not available for booking</div>
-                  {!user && (
-                    <button
-                      onClick={() => navigate('/login')}
-                      className="text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      Sign in to view booking options
-                    </button>
-                  )}
-                </div>
-              )}
+                if (isOwnEvent) {
+                  return (
+                    <div className="text-center py-4">
+                      <div className="text-gray-400 mb-2">This is your event</div>
+                      <div className="text-sm text-gray-500">You cannot book tickets for your own event</div>
+                    </div>
+                  );
+                }
+
+                if (canBook) {
+                  return (
+                    <div className="space-y-4">
+                      <div className="bg-neutral-800 p-4 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-300">Total Cost:</span>
+                          <span className="text-white text-xl font-semibold">
+                            {selectedTier
+                              ? formatPrice(selectedTier.price * ticketCount)
+                              : formatPrice(event.price * ticketCount)
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleBookTicket}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 rounded-lg transition-colors text-lg"
+                      >
+                        {user ? 'Book Tickets' : 'Sign In to Book'}
+                      </button>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="text-center py-4">
+                      <div className="text-gray-400 mb-2">This event is not available for booking</div>
+                      {!user && (
+                        <button
+                          onClick={() => navigate('/login')}
+                          className="text-purple-400 hover:text-purple-300 transition-colors"
+                        >
+                          Sign in to view booking options
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         </div>

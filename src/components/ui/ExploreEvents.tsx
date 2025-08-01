@@ -98,8 +98,15 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
       return;
     }
 
-    if (userData.role !== 'user') {
-      showError('Booking Restricted', 'Only users can book events');
+    // Allow both users and hosts to book events, but prevent hosts from booking their own events
+    if (userData.role === 'host' && event.hostId === user.uid) {
+      showError('Cannot Book Own Event', 'You cannot book tickets for your own event');
+      return;
+    }
+
+    // Only allow users and hosts to book events (exclude admins for now)
+    if (userData.role !== 'user' && userData.role !== 'host') {
+      showError('Booking Restricted', 'Only users and hosts can book events');
       return;
     }
 
@@ -321,7 +328,7 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
                 </div>
 
                 {/* Booking Button */}
-                {user && userData?.role === 'user' ? (
+                {user && (userData?.role === 'user' || userData?.role === 'host') ? (
                   (() => {
                     // Check if event date has passed
                     const eventDate = new Date(event.date);
@@ -334,7 +341,9 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
                       ? event.seatsLeft
                       : Math.max(0, (event.capacity || event.totalTickets || 100) - (event.ticketsSold || 0));
 
-                    const isAvailable = !isPastEvent && seatsLeft > 0 && (event.status === 'published' || event.status === 'approved');
+                    // Check if host is trying to book their own event
+                    const isOwnEvent = userData?.role === 'host' && event.hostId === user.uid;
+                    const isAvailable = !isPastEvent && seatsLeft > 0 && (event.status === 'published' || event.status === 'approved') && !isOwnEvent;
 
                     return (
                       <button
@@ -346,7 +355,9 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
                             : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white'
                         }`}
                       >
-                        {isPastEvent
+                        {isOwnEvent
+                          ? 'Your Event'
+                          : isPastEvent
                           ? 'Event Passed'
                           : seatsLeft <= 0
                           ? 'Sold Out'
