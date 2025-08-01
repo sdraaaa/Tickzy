@@ -563,6 +563,113 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
               {item.name}
             </button>
           ))}
+
+          {/* Mobile Role-based Action Buttons */}
+          <div className="pt-2 space-y-2 border-t border-gray-700 mt-3">
+            {roleActions.map((action) => {
+              const isPrimary = action.style === 'primary';
+              return (
+                <button
+                  key={action.name}
+                  onClick={() => navigate(action.path)}
+                  className={`group relative w-full px-6 py-3 font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-xl ${
+                    isPrimary
+                      ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:via-teal-400 hover:to-cyan-400 text-white border-2 border-emerald-400/30 hover:border-emerald-300/50 shadow-emerald-500/25 hover:shadow-emerald-400/40'
+                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border border-indigo-500/20'
+                  }`}
+                  title={action.description}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg
+                      className={`w-5 h-5 ${isPrimary ? 'drop-shadow-sm' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      {isPrimary ? (
+                        // Plus icon for Create Event with thicker stroke
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                      ) : (
+                        // Arrow up icon for Become Host
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      )}
+                    </svg>
+                    <span className={isPrimary ? 'tracking-wide' : ''}>{action.name}</span>
+                  </div>
+
+                  {/* Enhanced glow effect for primary button */}
+                  <div className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300 ${
+                    isPrimary
+                      ? 'bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-300 blur-sm'
+                      : 'bg-gradient-to-r from-indigo-400 to-purple-400'
+                  }`}></div>
+
+                  {/* Additional sparkle effect for primary button */}
+                  {isPrimary && (
+                    <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <div className="absolute top-1 right-1 w-1 h-1 bg-white rounded-full animate-pulse"></div>
+                      <div className="absolute bottom-1 left-1 w-1 h-1 bg-white rounded-full animate-pulse delay-300"></div>
+                      <div className="absolute top-1/2 left-1/2 w-0.5 h-0.5 bg-white rounded-full animate-pulse delay-150"></div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mobile Search Bar (only for non-admin users) */}
+          {userData?.role !== 'admin' && (
+            <div className="pt-2 border-t border-gray-700 mt-3">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className={`h-4 w-4 transition-colors duration-200 ${
+                        searchFocused ? 'text-purple-400' : 'text-gray-400'
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => setSearchFocused(false)}
+                    placeholder="Search events..."
+                    className={`block w-full pl-9 pr-4 py-2.5 text-sm border rounded-lg bg-neutral-700 text-white placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                      searchFocused
+                        ? 'border-purple-500 bg-neutral-600'
+                        : 'border-gray-600 hover:border-gray-500'
+                    }`}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        if (onSearch) onSearch('');
+                      }}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white transition-colors duration-200"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       </div>
 
