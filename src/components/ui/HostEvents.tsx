@@ -306,8 +306,13 @@ const HostEvents: React.FC = () => {
                       <div className="text-gray-400 text-xs">Sold</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold text-white">{event.totalTickets || event.capacity || 0}</div>
-                      <div className="text-gray-400 text-xs">Total</div>
+                      <div className="text-lg font-bold text-white">
+                        {event.seatsLeft !== undefined && event.seatsLeft !== null
+                          ? event.seatsLeft
+                          : Math.max(0, (event.totalTickets || event.capacity || 0) - (event.ticketsSold || 0))
+                        }
+                      </div>
+                      <div className="text-gray-400 text-xs">Left</div>
                     </div>
                     <div className="text-center">
                       <div className="text-lg font-bold text-white">${event.revenue || 0}</div>

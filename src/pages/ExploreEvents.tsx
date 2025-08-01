@@ -19,6 +19,7 @@ const ExploreEvents: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
 
 
@@ -27,7 +28,11 @@ const ExploreEvents: React.FC = () => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const fetchedEvents = await getEvents();
+        const filters = {
+          category: selectedCategory === 'all' ? undefined : selectedCategory,
+          query: searchQuery || undefined
+        };
+        const fetchedEvents = await getEvents(filters);
         setEvents(fetchedEvents);
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -38,7 +43,7 @@ const ExploreEvents: React.FC = () => {
     };
 
     fetchEvents();
-  }, []);
+  }, [selectedCategory, searchQuery]);
 
   const categories = [
     { id: 'all', name: 'All Events' },
@@ -50,6 +55,11 @@ const ExploreEvents: React.FC = () => {
     { id: 'business', name: 'Business' },
     { id: 'workshop', name: 'Workshops' }
   ];
+
+  // Handle search from navbar
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
 
   const filteredEvents = selectedCategory === 'all'
     ? events
@@ -81,6 +91,7 @@ const ExploreEvents: React.FC = () => {
             }
           }}
           currentView="explore"
+          onSearch={handleSearch}
         />
       ) : (
         <LandingNavbar />
@@ -92,6 +103,18 @@ const ExploreEvents: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-white">Explore Events</h1>
             <p className="text-gray-400 mt-2">Discover amazing events happening near you</p>
+
+            {/* Search Results Info */}
+            {searchQuery && (
+              <div className="mt-4">
+                <p className="text-gray-400">
+                  {filteredEvents.length > 0
+                    ? `Found ${filteredEvents.length} event${filteredEvents.length === 1 ? '' : 's'} for "${searchQuery}"`
+                    : `No events found for "${searchQuery}"`
+                  }
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
