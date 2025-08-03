@@ -37,7 +37,6 @@ class AdminLogger {
   async logAction(entry: Omit<AdminLogEntry, 'timestamp'>): Promise<void> {
     try {
       if (!db) {
-        console.warn('Database not initialized, skipping log entry');
         return;
       }
 
@@ -47,9 +46,7 @@ class AdminLogger {
       };
 
       await addDoc(collection(db, 'adminLogs'), logEntry);
-      console.log('Admin action logged:', logEntry);
     } catch (error) {
-      console.error('Failed to log admin action:', error);
       // Don't throw error to avoid breaking the main action
     }
   }

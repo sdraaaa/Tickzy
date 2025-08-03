@@ -67,14 +67,6 @@ export const uploadPDF = async (
 
     const downloadURL = await getDownloadURL(snapshot.ref);
 
-    // Debug: Log the download URL to check format
-    console.log('📄 PDF Upload Success:', {
-      path,
-      downloadURL,
-      fileName: file.name,
-      fileSize: file.size
-    });
-
     // Update progress - complete
     onProgress?.({
       progress: 100,
@@ -274,17 +266,12 @@ export const formatFileSize = (bytes: number): string => {
  */
 export const openPDFSafely = async (downloadURL: string, fileName?: string): Promise<void> => {
   try {
-    console.log('📄 Attempting to open PDF:', { downloadURL, fileName });
-
     // Validate URL format
     if (!downloadURL || !downloadURL.startsWith('https://firebasestorage.googleapis.com')) {
       throw new Error('Invalid Firebase Storage URL');
     }
 
-    // Add a small delay to ensure the URL is ready
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Try to open in new tab with additional parameters
+    // Try to open in new tab
     const newWindow = window.open(
       downloadURL,
       '_blank',
@@ -293,17 +280,6 @@ export const openPDFSafely = async (downloadURL: string, fileName?: string): Pro
 
     if (!newWindow) {
       // Popup blocked, try alternative method
-      console.warn('Popup blocked, trying alternative method...');
-
-      // Method 1: Try direct navigation
-      try {
-        window.location.href = downloadURL;
-        return;
-      } catch (navError) {
-        console.warn('Direct navigation failed, trying download method...');
-      }
-
-      // Method 2: Create a temporary link and click it
       const link = document.createElement('a');
       link.href = downloadURL;
       link.target = '_blank';
@@ -317,31 +293,16 @@ export const openPDFSafely = async (downloadURL: string, fileName?: string): Pro
       link.click();
       document.body.removeChild(link);
     }
-
-    console.log('✅ PDF opened successfully');
   } catch (error) {
-    console.error('❌ Error opening PDF:', error);
-
-    // Show user-friendly error message with more details
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const userMessage = `Unable to open PDF file. This might be due to:\n\n` +
-      `• Browser popup blocker\n` +
-      `• Network connectivity issues\n` +
-      `• File access permissions\n\n` +
-      `Please try:\n` +
-      `• Allowing popups for this site\n` +
-      `• Refreshing the page\n` +
-      `• Using a different browser\n\n` +
-      `Technical error: ${errorMessage}`;
-
-    alert(userMessage);
+    // Show user-friendly error message
+    alert('Unable to open PDF file. Please check your browser settings and try again.');
 
     // As a last resort, copy URL to clipboard
     try {
       await navigator.clipboard.writeText(downloadURL);
       alert('PDF URL copied to clipboard. You can paste it in a new tab to view the file.');
     } catch (clipboardError) {
-      console.error('Failed to copy to clipboard:', clipboardError);
+      // Silent fail for clipboard
     }
   }
 };

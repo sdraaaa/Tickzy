@@ -126,7 +126,6 @@ const HostRequestReviewModal: React.FC<HostRequestReviewModalProps> = ({
       onStatusUpdate(request.id, 'rejected');
       onClose();
     } catch (error) {
-      console.error('Error rejecting host request:', error);
       alert('Failed to reject host request. Please try again.');
     } finally {
       setUpdating(false);

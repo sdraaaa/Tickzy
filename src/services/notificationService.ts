@@ -42,30 +42,9 @@ class NotificationService {
         createdAt: Timestamp.now()
       };
 
-      console.log('🔔 Final notification data to save:', notificationData);
-
       const notificationDoc = await addDoc(collection(db, 'notifications'), notificationData);
-
-      console.log('✅ Notification document created with ID:', notificationDoc.id);
-      console.log('✅ Notification saved successfully:', {
-        id: notificationDoc.id,
-        title: data.title,
-        userId: data.userId,
-        type: data.type
-      });
-
-      // Verify the document was actually created
-      console.log('🔍 Verifying notification was saved...');
-
       return notificationDoc.id;
     } catch (error: any) {
-      console.error('❌ Error creating notification:', {
-        error: error,
-        message: error.message,
-        code: error.code,
-        stack: error.stack,
-        name: error.name
-      });
 
       // Log specific Firebase errors
       if (error.code) {
@@ -285,15 +264,4 @@ class NotificationService {
 
 export const notificationService = new NotificationService();
 
-// Export for debugging in browser console
-(window as any).testNotification = async (userId: string) => {
-  console.log('🧪 Testing notification for user:', userId);
-  try {
-    const result = await notificationService.createTestNotification(userId);
-    console.log('✅ Test notification result:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Test notification failed:', error);
-    return error;
-  }
-};
+

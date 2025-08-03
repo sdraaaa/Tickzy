@@ -133,18 +133,7 @@ export const formatEventDateTime = (eventDate: string, eventTime: string): strin
   }
 };
 
-/**
- * Test function to verify date logic is working correctly
- * Call this from browser console: window.testDateLogic()
- */
-export const testDateLogic = () => {
-  console.log('🧪 Testing date logic...');
 
-  // Test future event (should not be past)
-  const futureDate = '2025-07-31';
-  const futureTime = '20:00';
-  const isFuturePast = isEventPast(futureDate, futureTime);
-  console.log(`Future event (${futureDate} ${futureTime}):`, isFuturePast ? '❌ INCORRECTLY marked as past' : '✅ Correctly marked as future');
 
   // Test past event (should be past)
   const pastDate = '2023-01-01';
@@ -158,14 +147,4 @@ export const testDateLogic = () => {
   const isTodayFuturePast = isEventPast(today, futureTimeToday);
   console.log(`Today's future event (${today} ${futureTimeToday}):`, isTodayFuturePast ? '❌ INCORRECTLY marked as past' : '✅ Correctly marked as future');
 
-  return {
-    futureEventCorrect: !isFuturePast,
-    pastEventCorrect: isPastPast,
-    todayFutureEventCorrect: !isTodayFuturePast
-  };
-};
 
-// Export for console testing
-if (typeof window !== 'undefined') {
-  (window as any).testDateLogic = testDateLogic;
-}

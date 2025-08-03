@@ -83,7 +83,6 @@ class EmailService {
 
 
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-        console.error('❌ EmailJS not configured properly. Please check environment variables.');
         return false;
       }
 
@@ -93,25 +92,8 @@ class EmailService {
         templateParams
       );
 
-      if (response.status === 200) {
-        return true;
-      } else {
-        console.error('Failed to send welcome email:', response);
-        return false;
-      }
+      return response.status === 200;
     } catch (error: any) {
-      console.error('❌ EmailJS Error Details:', {
-        error: error,
-        status: error.status,
-        text: error.text,
-        message: error.message
-      });
-
-      // Try to get more specific error info
-      if (error.text) {
-        console.error('❌ EmailJS Error Text:', error.text);
-      }
-
       return false;
     }
   }

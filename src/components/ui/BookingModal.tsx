@@ -80,7 +80,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
       // Send booking confirmation email with QR code from booking result
       try {
         const qrCode = result.qrCode || '';
-        console.log('📧 QR code from booking result:', qrCode ? `Found QR code (${qrCode.length} chars)` : 'No QR code');
 
         await emailService.sendBookingConfirmationEmail({
           userEmail: user.email || userData.email,
@@ -95,7 +94,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
           qrCode // QR code directly from booking creation
         });
       } catch (emailError) {
-        console.error('Failed to send confirmation email:', emailError);
         // Don't fail the booking if email fails
       }
 
@@ -108,7 +106,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
           result.bookingId!
         );
       } catch (notificationError) {
-        console.error('Failed to send booking notification:', notificationError);
         // Don't fail the booking if notification fails
       }
 
@@ -116,7 +113,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
       onBookingSuccess(result.bookingId!);
       onClose();
     } catch (error: any) {
-      console.error('Booking error:', error);
       setError(error.message || 'An unexpected error occurred');
     } finally {
       setIsBooking(false);

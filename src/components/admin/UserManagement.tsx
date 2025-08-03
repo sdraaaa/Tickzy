@@ -174,10 +174,8 @@ const UserManagement: React.FC = () => {
       setUsers(users.filter(user => user.id !== userId));
 
       alert(`✅ User ${targetUser.email} has been permanently deleted from the system.`);
-      console.log('🎉 User deletion completed successfully');
 
     } catch (error: any) {
-      console.error('❌ Error deleting user:', error);
       alert(`Failed to delete user: ${error.message}`);
     } finally {
       setUpdating(null);

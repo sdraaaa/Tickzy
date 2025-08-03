@@ -77,7 +77,6 @@ export const getPastEventIds = async (): Promise<string[]> => {
     
     return pastEventIds;
   } catch (error) {
-    console.error('Error getting past event IDs:', error);
     return [];
   }
 };
