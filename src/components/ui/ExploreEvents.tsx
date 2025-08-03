@@ -9,7 +9,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGlobalToast } from '../../contexts/ToastContext';
-import { getEvents, migrateEventsAddSeatsLeft } from '../../services/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { getDefaultEventImage } from '../../utils/defaultImage';
 import { Event, SearchFilters } from '../../types';
 import { isEventPast } from '../../utils/dateUtils';
@@ -35,47 +36,63 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
   const { showSuccess, showError } = useGlobalToast();
 
 
-  // Fetch events from Firestore
+  // Real-time listener for events
   useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      try {
-        const filters: Partial<SearchFilters> = {
-          category: selectedCategory === 'all' ? undefined : selectedCategory,
-          query: searchQuery || undefined
-        };
+    if (!db) return;
 
-        const fetchedEvents = await getEvents(filters);
+    setLoading(true);
 
-        // Additional client-side filtering for extra safety
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
+    // Create real-time query for approved events
+    const eventsQuery = query(
+      collection(db, 'events'),
+      where('status', 'in', ['approved', 'published', 'active']),
+      orderBy('createdAt', 'desc')
+    );
 
-        const validEvents = fetchedEvents.filter(event => {
-          // Ensure event is published/approved
-          const isPublished = event.status === 'approved' ||
-                             event.status === 'published' ||
-                             event.status === 'active';
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(eventsQuery, (snapshot) => {
+      const fetchedEvents: Event[] = [];
 
-          // Ensure event is not cancelled/deleted
-          const isValid = event.status !== 'cancelled' &&
-                         event.status !== 'deleted' &&
-                         event.status !== 'rejected';
+      snapshot.forEach((doc) => {
+        const eventData = doc.data();
+        fetchedEvents.push({
+          id: doc.id,
+          ...eventData,
+          createdAt: eventData.createdAt,
+          updatedAt: eventData.updatedAt
+        } as Event);
+      });
 
-          return isPublished && isValid;
-        });
+      // Apply client-side filters
+      let filteredEvents = fetchedEvents;
 
-        console.log(`📅 Dashboard: Found ${fetchedEvents.length} total events, ${validEvents.length} valid events`);
-        setEvents(validEvents);
-      } catch (error) {
-        console.error('Error fetching events:', error);
-        setEvents([]);
-      } finally {
-        setLoading(false);
+      // Category filter
+      if (selectedCategory !== 'all') {
+        filteredEvents = filteredEvents.filter(event =>
+          event.category?.toLowerCase() === selectedCategory.toLowerCase()
+        );
       }
-    };
 
-    fetchEvents();
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filteredEvents = filteredEvents.filter(event =>
+          event.title?.toLowerCase().includes(query) ||
+          event.description?.toLowerCase().includes(query) ||
+          event.location?.toLowerCase().includes(query) ||
+          event.venue?.toLowerCase().includes(query)
+        );
+      }
+
+      setEvents(filteredEvents);
+      setLoading(false);
+    }, (error) => {
+      setEvents([]);
+      setLoading(false);
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, [selectedCategory, searchQuery, navbarSearchQuery]);
 
 

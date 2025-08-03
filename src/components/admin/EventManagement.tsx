@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Event } from '../../types';
 import { getDefaultEventImage } from '../../utils/defaultImage';
@@ -33,14 +33,20 @@ const EventManagement: React.FC = () => {
   const [refreshingStatuses, setRefreshingStatuses] = useState(false);
 
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    if (!db) return;
 
-  const fetchEvents = async () => {
     setLoading(true);
-    try {
-      const eventsSnapshot = await getDocs(collection(db, 'events'));
-      const usersSnapshot = await getDocs(collection(db, 'users'));
+
+    // Set up real-time listener for events
+    const eventsQuery = query(
+      collection(db, 'events'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(eventsQuery, async (eventsSnapshot) => {
+      try {
+        // Get users data (this could be optimized with caching)
+        const usersSnapshot = await getDocs(collection(db, 'users'));
 
       // Create a map of user IDs to user data
       const usersMap = new Map();
@@ -129,13 +135,20 @@ const EventManagement: React.FC = () => {
       });
 
 
-      setEvents(eventsData);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    } finally {
+        setEvents(eventsData);
+        setLoading(false);
+      } catch (error) {
+        setEvents([]);
+        setLoading(false);
+      }
+    }, (error) => {
+      setEvents([]);
       setLoading(false);
-    }
-  };
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []);
 
   const updateEventStatus = async (eventId: string, newStatus: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed' | 'published') => {
     setUpdating(eventId);

@@ -8,7 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getEventsByHost } from '../../services/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { Event } from '../../types';
 import { isEventPast } from '../../utils/dateUtils';
 import StatsModal from './StatsModal';
@@ -37,23 +38,42 @@ const HostEvents: React.FC = () => {
     event: null
   });
 
-  // Fetch host events from Firestore
+  // Real-time listener for host events
   useEffect(() => {
-    const fetchEvents = async () => {
-      if (!user) return;
+    if (!user || !db) return;
 
-      setLoading(true);
-      try {
-        const hostEvents = await getEventsByHost(user.uid, user.email || undefined);
-        setEvents(hostEvents);
-      } catch (error) {
-        setEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setLoading(true);
 
-    fetchEvents();
+    // Create real-time query for host events
+    const eventsQuery = query(
+      collection(db, 'events'),
+      where('hostId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(eventsQuery, (snapshot) => {
+      const hostEvents: Event[] = [];
+
+      snapshot.forEach((doc) => {
+        const eventData = doc.data();
+        hostEvents.push({
+          id: doc.id,
+          ...eventData,
+          createdAt: eventData.createdAt,
+          updatedAt: eventData.updatedAt
+        } as Event);
+      });
+
+      setEvents(hostEvents);
+      setLoading(false);
+    }, (error) => {
+      setEvents([]);
+      setLoading(false);
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, [user]);
 
   // Handle stat card clicks
