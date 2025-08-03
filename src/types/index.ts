@@ -45,6 +45,14 @@ export interface Event {
   // Event management fields
   lastModifiedBy?: string; // UID of user who last modified the event
   modificationReason?: string; // Reason for modification
+  originalValues?: {
+    title?: string;
+    description?: string;
+    venue?: string;
+    location?: string;
+    capacity?: number;
+    price?: number;
+  }; // Store original values before modification for comparison
 }
 
 // Booking related types

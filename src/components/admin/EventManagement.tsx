@@ -10,6 +10,7 @@ import { db } from '../../firebase';
 import { Event } from '../../types';
 import { getDefaultEventImage } from '../../utils/defaultImage';
 import EventReviewModal from './EventReviewModal';
+import ChangesSummaryModal from './ChangesSummaryModal';
 import { notificationService } from '../../services/notificationService';
 import { updateEventStatuses } from '../../services/eventStatusService';
 
@@ -28,6 +29,7 @@ const EventManagement: React.FC = () => {
   const [updating, setUpdating] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventWithHost | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showChangesModal, setShowChangesModal] = useState(false);
   const [refreshingStatuses, setRefreshingStatuses] = useState(false);
 
   useEffect(() => {
@@ -288,8 +290,18 @@ const EventManagement: React.FC = () => {
                           e.currentTarget.src = getDefaultEventImage();
                         }}
                       />
-                      <div>
-                        <div className="text-white font-medium">{String(event.title)}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <div className="text-white font-medium">{String(event.title)}</div>
+                          {event.lastModifiedBy && (
+                            <div className="flex items-center space-x-1">
+                              <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              <span className="text-yellow-400 text-xs font-medium">MODIFIED</span>
+                            </div>
+                          )}
+                        </div>
                         <div className="text-gray-400 text-sm">{String(event.location)}</div>
                       </div>
                     </div>
@@ -338,6 +350,22 @@ const EventManagement: React.FC = () => {
                       >
                         View
                       </button>
+
+                      {/* Show View Changes button for modified events */}
+                      {event.lastModifiedBy && event.originalValues && (
+                        <button
+                          onClick={() => {
+                            setSelectedEvent(event);
+                            setShowChangesModal(true);
+                          }}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors duration-200 flex items-center space-x-1"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <span>Changes</span>
+                        </button>
+                      )}
 
                       {event.status === 'pending' && (
                         <>
@@ -413,6 +441,15 @@ const EventManagement: React.FC = () => {
           isOpen={showReviewModal}
           onClose={handleCloseModal}
           onStatusUpdate={handleStatusUpdate}
+        />
+      )}
+
+      {/* Changes Summary Modal */}
+      {selectedEvent && (
+        <ChangesSummaryModal
+          isOpen={showChangesModal}
+          onClose={() => setShowChangesModal(false)}
+          event={selectedEvent}
         />
       )}
     </div>

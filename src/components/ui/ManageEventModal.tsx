@@ -57,12 +57,23 @@ const ManageEventModal: React.FC<ManageEventModalProps> = ({
 
     setLoading(true);
     try {
+      // Store original values for comparison
+      const originalValues = {
+        title: event.title,
+        description: event.description,
+        venue: event.venue,
+        location: event.location,
+        capacity: event.capacity,
+        price: event.price
+      };
+
       const updateData = {
         ...formData,
         status: 'pending', // Reset to pending for admin re-approval
         updatedAt: Timestamp.now(),
         lastModifiedBy: user.uid,
-        modificationReason: 'Host updated event details'
+        modificationReason: 'Host updated event details',
+        originalValues // Store original values for admin comparison
       };
 
       // Update in Firestore
