@@ -620,10 +620,7 @@ export const createBookingAtomic = async (
 // Notifications
 export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
   try {
-    console.log('🔔 getUserNotifications called for userId:', userId);
-
     if (!db) {
-      console.error('❌ Database not available in getUserNotifications');
       return [];
     }
 
@@ -637,7 +634,6 @@ export const getUserNotifications = async (userId: string): Promise<Notification
         limit(50)
       );
     } catch (indexError) {
-      console.log('🔔 Index not ready, using query without orderBy');
       q = query(
         collection(db, 'notifications'),
         where('userId', '==', userId),
@@ -645,10 +641,7 @@ export const getUserNotifications = async (userId: string): Promise<Notification
       );
     }
 
-    console.log('🔔 Executing notifications query...');
     const querySnapshot = await getDocs(q);
-    console.log('🔔 Query completed, documents found:', querySnapshot.size);
-
     const notifications: Notification[] = [];
 
     querySnapshot.forEach((doc) => {
@@ -656,7 +649,6 @@ export const getUserNotifications = async (userId: string): Promise<Notification
         id: doc.id,
         ...doc.data()
       } as Notification;
-      console.log('🔔 Found notification:', notificationData);
       notifications.push(notificationData);
     });
 
@@ -667,14 +659,8 @@ export const getUserNotifications = async (userId: string): Promise<Notification
       return dateB.getTime() - dateA.getTime();
     });
 
-    console.log('🔔 Total notifications returned:', notifications.length);
     return notifications;
   } catch (error: any) {
-    console.error('❌ Error in getUserNotifications:', {
-      error: error,
-      message: error.message,
-      code: error.code
-    });
     return [];
   }
 };

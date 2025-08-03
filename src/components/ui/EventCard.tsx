@@ -68,7 +68,6 @@ const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
 
   // Don't render the card if no valid banner is available
   if (!event.bannerURL && !event.image) {
-    console.warn(`Event ${event.id} has no banner image, skipping render`);
     return null;
   }
   return (

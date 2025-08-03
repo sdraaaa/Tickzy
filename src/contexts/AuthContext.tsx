@@ -190,14 +190,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUserData(userDoc.data() as UserData);
       }
     } catch (error) {
-      console.error('Error refreshing user data:', error);
+      // Silent fail
     }
   };
 
   // Logout function
   const logout = async (): Promise<void> => {
     if (!auth) {
-      console.warn('Firebase auth not initialized');
       return;
     }
 

@@ -15,46 +15,36 @@ import { isEventPast } from '../utils/dateUtils';
  */
 export const updateEventStatuses = async (): Promise<void> => {
   try {
-    console.log('🔄 Starting event status update...');
-    
     // Get all active events (not already marked as completed/cancelled)
     const eventsQuery = query(
       collection(db, 'events'),
       where('status', 'in', ['published', 'approved', 'active', 'pending'])
     );
-    
+
     const eventsSnapshot = await getDocs(eventsQuery);
     const updatePromises: Promise<void>[] = [];
-    let updatedCount = 0;
-    
+
     eventsSnapshot.forEach((eventDoc) => {
       const eventData = eventDoc.data();
       const eventId = eventDoc.id;
-      
+
       // Check if event has passed
       if (eventData.date && eventData.time && isEventPast(eventData.date, eventData.time)) {
         // Update status to completed
         const updatePromise = updateDoc(doc(db, 'events', eventId), {
           status: 'completed',
           updatedAt: new Date()
-        }).then(() => {
-          console.log(`✅ Updated event ${eventId} (${eventData.title}) to completed status`);
-          updatedCount++;
-        }).catch((error) => {
-          console.error(`❌ Failed to update event ${eventId}:`, error);
         });
-        
+
         updatePromises.push(updatePromise);
       }
     });
-    
+
     // Wait for all updates to complete
     await Promise.all(updatePromises);
-    
-    console.log(`🎯 Event status update complete: ${updatedCount} events updated`);
-    
+
   } catch (error) {
-    console.error('❌ Error updating event statuses:', error);
+    // Silent fail
   }
 };
 
@@ -110,11 +100,9 @@ export const isEventBookable = (eventDate: string, eventTime: string, eventStatu
 export const initializeEventStatusUpdates = (): void => {
   // Update statuses immediately
   updateEventStatuses();
-  
+
   // Set up periodic updates every 5 minutes
   setInterval(() => {
     updateEventStatuses();
   }, 5 * 60 * 1000); // 5 minutes
-  
-  console.log('🚀 Event status auto-update initialized (5-minute intervals)');
 };

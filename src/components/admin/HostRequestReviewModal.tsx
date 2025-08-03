@@ -88,7 +88,6 @@ const HostRequestReviewModal: React.FC<HostRequestReviewModalProps> = ({
       // Show success message
       alert('Host request approved successfully! The user is now a host.');
     } catch (error) {
-      console.error('Error approving host request:', error);
       alert(`Failed to approve host request: ${error.message}`);
     } finally {
       setUpdating(false);

@@ -113,14 +113,12 @@ export const removeProfilePicture = async (user: User): Promise<void> => {
         await deleteImage(user.photoURL);
       } catch (error) {
         // Don't fail the entire operation if we can't delete the old image
-        console.warn('Could not delete old profile image:', error);
       }
     }
 
     // Update user profile to remove photo URL
     await updateUserProfile(user, { photoURL: '' });
   } catch (error) {
-    console.error('Error removing profile picture:', error);
     throw new Error('Failed to remove profile picture. Please try again.');
   }
 };

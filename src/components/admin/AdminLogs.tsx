@@ -47,7 +47,6 @@ const AdminLogs: React.FC = () => {
 
       setLogs(logsData);
     } catch (error) {
-      console.error('Error fetching admin logs:', error);
       // If adminLogs collection doesn't exist yet, just set empty array
       setLogs([]);
     } finally {

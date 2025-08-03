@@ -229,7 +229,6 @@ const HostRequests: React.FC = () => {
       setRequests(requests.filter(req => req.id !== request.id));
 
     } catch (error) {
-      console.error('Error rejecting host request:', error);
       alert('Error rejecting request. Please try again.');
     } finally {
       setProcessing(null);

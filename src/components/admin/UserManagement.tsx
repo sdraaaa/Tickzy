@@ -144,11 +144,8 @@ const UserManagement: React.FC = () => {
 
     setUpdating(userId);
     try {
-      console.log('🗑️ Starting complete user deletion for:', targetUser.email);
-
       // Delete user document from Firestore
       await deleteDoc(doc(db, 'users', userId));
-      console.log('✅ User document deleted from Firestore');
 
       // Log the deletion action
       if (currentUser) {

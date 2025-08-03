@@ -80,18 +80,16 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
   // Get unread notification count
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Manual refresh function for testing
+  // Manual refresh function
   const refreshNotifications = async () => {
     if (!user) return;
 
-    console.log('🔄 Manually refreshing notifications...');
     setLoadingNotifications(true);
     try {
       const userNotifications = await getUserNotifications(user.uid);
-      console.log('🔄 Manual refresh result:', userNotifications);
       setNotifications(userNotifications);
     } catch (error) {
-      console.error('❌ Error manually refreshing notifications:', error);
+      // Silent fail
     } finally {
       setLoadingNotifications(false);
     }

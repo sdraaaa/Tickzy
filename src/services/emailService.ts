@@ -133,10 +133,8 @@ class EmailService {
         welcomeEmailSentAt: new Date(),
         updatedAt: new Date()
       });
-
-      console.log('✅ Marked welcome email as sent for user:', userId);
     } catch (error) {
-      console.error('❌ Error marking welcome email as sent:', error);
+      // Silent fail
     }
   }
 
@@ -151,9 +149,8 @@ class EmailService {
     try {
       // Check if welcome email has already been sent
       const alreadySent = await this.hasWelcomeEmailBeenSent(userId);
-      
+
       if (alreadySent) {
-        console.log('📧 Welcome email already sent to user:', userEmail);
         return;
       }
 
@@ -167,9 +164,6 @@ class EmailService {
       if (emailSent) {
         // Mark as sent in Firestore
         await this.markWelcomeEmailSent(userId);
-        console.log('🎉 Welcome email process completed for:', userEmail);
-      } else {
-        console.error('❌ Failed to send welcome email to:', userEmail);
       }
     } catch (error) {
       console.error('❌ Error in welcome email process:', error);
@@ -298,31 +292,14 @@ class EmailService {
         reply_to: 'support@tickzy.com'
       };
 
-      console.log('📧 Sending booking confirmation email to:', data.userEmail);
-      console.log('📧 QR Code data length:', data.qrCode?.length || 0);
-      console.log('📧 QR Code preview:', data.qrCode?.substring(0, 100) + '...');
-      console.log('📧 Template params:', templateParams);
-
       const response = await emailjs.send(
         EMAILJS_SERVICE_ID,
         EMAILJS_BOOKING_TEMPLATE_ID, // Using dedicated booking confirmation template
         templateParams
       );
 
-      if (response.status === 200) {
-        console.log('✅ Booking confirmation email sent successfully');
-        return true;
-      } else {
-        console.error('❌ Failed to send booking confirmation email:', response);
-        return false;
-      }
+      return response.status === 200;
     } catch (error: any) {
-      console.error('❌ EmailJS Booking Confirmation Error:', {
-        error: error,
-        status: error.status,
-        text: error.text,
-        message: error.message
-      });
       return false;
     }
   }

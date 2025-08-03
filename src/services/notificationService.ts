@@ -28,11 +28,7 @@ class NotificationService {
    */
   async createNotification(data: NotificationData): Promise<string | null> {
     try {
-      console.log('🔔 Creating notification with data:', data);
-      console.log('🔔 Database instance:', db ? 'Available' : 'Not available');
-
       if (!db) {
-        console.error('❌ Database not initialized');
         return null;
       }
 
@@ -45,12 +41,6 @@ class NotificationService {
       const notificationDoc = await addDoc(collection(db, 'notifications'), notificationData);
       return notificationDoc.id;
     } catch (error: any) {
-
-      // Log specific Firebase errors
-      if (error.code) {
-        console.error('❌ Firebase error code:', error.code);
-      }
-
       return null;
     }
   }
@@ -59,21 +49,13 @@ class NotificationService {
    * Send notification when host creates an event
    */
   async notifyHostEventCreated(hostId: string, eventTitle: string, eventId: string): Promise<void> {
-    console.log('🔔 notifyHostEventCreated called with:', { hostId, eventTitle, eventId });
-
-    const result = await this.createNotification({
+    await this.createNotification({
       userId: hostId,
       title: 'Event Created Successfully',
       message: `Your event "${eventTitle}" has been submitted for review. You'll be notified once it's approved.`,
       type: 'event',
       actionUrl: `/dashboard`
     });
-
-    if (result) {
-      console.log('✅ Host event creation notification sent successfully');
-    } else {
-      console.error('❌ Failed to send host event creation notification');
-    }
   }
 
   /**
@@ -166,10 +148,8 @@ class NotificationService {
       });
 
       await Promise.all(notificationPromises);
-      
-      console.log(`📢 Sent deletion notifications for event: ${eventTitle}`);
     } catch (error) {
-      console.error('Error sending event deletion notifications:', error);
+      // Silent fail
     }
   }
 
@@ -245,7 +225,6 @@ class NotificationService {
   ): Promise<void> {
     // This would require user preferences/interests to be stored
     // For now, we'll skip this but the structure is here for future implementation
-    console.log(`📢 New event notification ready: ${eventTitle}`);
   }
 
   /**

@@ -29,11 +29,9 @@ const Login: React.FC = () => {
         const result = await getRedirectResult(auth);
         if (result) {
           // User signed in via redirect
-          console.log('Redirect sign-in successful:', result.user.email);
           // The AuthContext will handle the rest
         }
       } catch (error: any) {
-        console.error('Error handling redirect result:', error);
         setError('Sign-in failed. Please try again.');
       }
     };
@@ -56,10 +54,8 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      console.log('Attempting sign in with email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('Sign in successful for user:', user.email);
 
       // Check if email is verified
       if (!user.emailVerified) {
@@ -68,9 +64,6 @@ const Login: React.FC = () => {
         navigate('/dashboard');
       }
     } catch (error: any) {
-      console.error('Email sign in error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
       setError(getErrorMessage(error.code));
     } finally {
       setLoading(false);
@@ -149,13 +142,11 @@ const Login: React.FC = () => {
       // Use popup method (more reliable and faster)
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      console.log('Google sign-in successful:', user.email);
 
       // The AuthContext will handle creating/getting the user document
       // and the useEffect above will handle redirection
 
     } catch (popupError: any) {
-      console.error('Popup sign-in failed:', popupError);
 
       // Handle specific popup error cases
       if (popupError.code === 'auth/popup-closed-by-user') {
@@ -179,12 +170,10 @@ const Login: React.FC = () => {
       } else {
         // Don't show COOP errors to user, just fallback to redirect
         if (popupError.message?.includes('Cross-Origin-Opener-Policy')) {
-          console.warn('COOP warning detected (non-critical), falling back to redirect...');
           try {
             await signInWithRedirect(auth, provider);
             return;
           } catch (redirectError) {
-            console.error('Redirect sign-in also failed:', redirectError);
             setError('Failed to sign in. Please try again.');
           }
         } else {
