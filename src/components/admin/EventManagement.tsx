@@ -104,8 +104,7 @@ const EventManagement: React.FC = () => {
           createdAt: data.createdAt || data.created_at,
           updatedAt: data.updatedAt || data.updated_at,
           venueProofPDF: data.venueProofPDF || data.venueDocument || '',
-          locationName: data.locationName || data.location || '',
-          seatsLeft: data.seatsLeft || data.capacity || 0
+          locationName: data.locationName || data.location || ''
         };
 
         // Get host information
