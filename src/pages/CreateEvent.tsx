@@ -301,7 +301,7 @@ const CreateEvent: React.FC = () => {
               </div>
 
               {/* Venue Name */}
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-white mb-2">
                   Venue Name <span className="text-red-400">*</span>
                 </label>
@@ -321,7 +321,7 @@ const CreateEvent: React.FC = () => {
               </div>
 
               {/* Event Address */}
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-white mb-2">
                   Event Address <span className="text-red-400">*</span>
                 </label>
