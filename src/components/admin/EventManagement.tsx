@@ -103,8 +103,7 @@ const EventManagement: React.FC = () => {
           seatsLeft: data.seatsLeft || data.capacity || 0,
           createdAt: data.createdAt || data.created_at,
           updatedAt: data.updatedAt || data.updated_at,
-          venueProofPDF: data.venueProofPDF || data.venueDocument || '',
-          locationName: data.locationName || data.location || ''
+          venueProofPDF: data.venueProofPDF || data.venueDocument || ''
         };
 
         // Get host information
