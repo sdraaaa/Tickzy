@@ -38,9 +38,7 @@ jobs:
         run: npm ci
         
       - name: Build for GitHub Pages
-        run: |
-          export GITHUB_PAGES=true
-          npm run build
+        run: npm run build:gh-pages
         env:
           NODE_ENV: production
           # Firebase configuration - using hardcoded values since they're public anyway
