@@ -45,14 +45,17 @@ export interface Event {
   // Event management fields
   lastModifiedBy?: string; // UID of user who last modified the event
   modificationReason?: string; // Reason for modification
-  originalValues?: {
+  pendingChanges?: {
     title?: string;
     description?: string;
     venue?: string;
     location?: string;
     capacity?: number;
     price?: number;
-  }; // Store original values before modification for comparison
+    submittedAt?: any; // Timestamp when changes were submitted
+    submittedBy?: string; // UID of user who submitted changes
+  }; // Store pending changes that need admin approval
+  hasPendingChanges?: boolean; // Flag to indicate if there are pending changes
 }
 
 // Booking related types

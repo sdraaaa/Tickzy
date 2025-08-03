@@ -57,12 +57,30 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
   const handleApprove = async () => {
     setUpdating(true);
     try {
-      await updateDoc(doc(db, 'events', event.id), {
+      const updateData: any = {
         status: 'approved',
         statusUpdatedAt: Timestamp.now(),
         statusUpdatedBy: 'admin',
         updatedAt: Timestamp.now()
-      });
+      };
+
+      // If there are pending changes, apply them to the live event
+      if (event.hasPendingChanges && event.pendingChanges) {
+        updateData.title = event.pendingChanges.title || event.title;
+        updateData.description = event.pendingChanges.description || event.description;
+        updateData.venue = event.pendingChanges.venue || event.venue;
+        updateData.location = event.pendingChanges.location || event.location;
+        updateData.capacity = event.pendingChanges.capacity || event.capacity;
+        updateData.price = event.pendingChanges.price || event.price;
+
+        // Clear pending changes after applying them
+        updateData.pendingChanges = null;
+        updateData.hasPendingChanges = false;
+        updateData.lastModifiedBy = null;
+        updateData.modificationReason = null;
+      }
+
+      await updateDoc(doc(db, 'events', event.id), updateData);
       
       // Log the approval action
       if (user) {
@@ -102,13 +120,23 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
 
     setUpdating(true);
     try {
-      await updateDoc(doc(db, 'events', event.id), {
+      const updateData: any = {
         status: 'rejected',
         rejectionReason: rejectionReason.trim(),
         statusUpdatedAt: Timestamp.now(),
         statusUpdatedBy: 'admin',
         updatedAt: Timestamp.now()
-      });
+      };
+
+      // Clear pending changes when rejecting
+      if (event.hasPendingChanges) {
+        updateData.pendingChanges = null;
+        updateData.hasPendingChanges = false;
+        updateData.lastModifiedBy = null;
+        updateData.modificationReason = null;
+      }
+
+      await updateDoc(doc(db, 'events', event.id), updateData);
 
       // Log the rejection action
       if (user) {
@@ -239,37 +267,38 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
                 </div>
               </div>
 
-              {/* Update Notification */}
-              {event.lastModifiedBy && (
-                <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4">
+              {/* Pending Changes Notification */}
+              {event.hasPendingChanges && event.pendingChanges && (
+                <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <div>
-                        <h4 className="text-yellow-400 font-medium">Event Updated by Host</h4>
-                        <p className="text-yellow-200 text-sm mt-1">
-                          This event has been modified and requires re-approval. Please review all changes carefully.
+                        <h4 className="text-blue-400 font-medium">Pending Changes Submitted</h4>
+                        <p className="text-blue-200 text-sm mt-1">
+                          Host has submitted updates for this event. The event remains live with current details while changes await approval.
                         </p>
                         {event.modificationReason && (
-                          <p className="text-yellow-200 text-xs mt-1">
+                          <p className="text-blue-200 text-xs mt-1">
                             Reason: {event.modificationReason}
                           </p>
                         )}
+                        <p className="text-blue-200 text-xs mt-1">
+                          Submitted: {event.pendingChanges.submittedAt?.toDate?.()?.toLocaleString() || 'Unknown'}
+                        </p>
                       </div>
                     </div>
-                    {event.originalValues && (
-                      <button
-                        onClick={() => setShowChanges(true)}
-                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        <span>View Changes</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setShowChanges(true)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors duration-200 flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      <span>Review Changes</span>
+                    </button>
                   </div>
                 </div>
               )}

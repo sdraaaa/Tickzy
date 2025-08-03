@@ -57,23 +57,25 @@ const ManageEventModal: React.FC<ManageEventModalProps> = ({
 
     setLoading(true);
     try {
-      // Store original values for comparison
-      const originalValues = {
-        title: event.title,
-        description: event.description,
-        venue: event.venue,
-        location: event.location,
-        capacity: event.capacity,
-        price: event.price
+      // Store pending changes without affecting the live event
+      const pendingChanges = {
+        title: formData.title,
+        description: formData.description,
+        venue: formData.venue,
+        location: formData.location,
+        capacity: formData.capacity,
+        price: formData.price,
+        submittedAt: Timestamp.now(),
+        submittedBy: user.uid
       };
 
       const updateData = {
-        ...formData,
-        status: 'pending', // Reset to pending for admin re-approval
-        updatedAt: Timestamp.now(),
+        pendingChanges,
+        hasPendingChanges: true,
         lastModifiedBy: user.uid,
-        modificationReason: 'Host updated event details',
-        originalValues // Store original values for admin comparison
+        modificationReason: 'Host submitted event updates for approval',
+        updatedAt: Timestamp.now()
+        // Note: We don't change the status or live event data
       };
 
       // Update in Firestore
@@ -90,7 +92,7 @@ const ManageEventModal: React.FC<ManageEventModalProps> = ({
       // Update local state
       onEventUpdated(event.id, updateData);
 
-      alert('Event updated successfully! Your changes have been submitted for admin review.');
+      alert('Changes submitted successfully! Your event remains live while changes are pending admin approval.');
       onClose();
     } catch (error) {
       alert('Failed to update event. Please try again.');
@@ -117,15 +119,15 @@ const ManageEventModal: React.FC<ManageEventModalProps> = ({
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 mb-6">
+          <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4 mb-6">
             <div className="flex items-start space-x-3">
-              <svg className="w-5 h-5 text-yellow-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+              <svg className="w-5 h-5 text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <h4 className="text-yellow-400 font-medium">Admin Re-approval Required</h4>
-                <p className="text-yellow-200 text-sm mt-1">
-                  Any changes you make will require admin approval before they go live. Your event status will be reset to "Pending" after submission.
+                <h4 className="text-blue-400 font-medium">Event Stays Live During Review</h4>
+                <p className="text-blue-200 text-sm mt-1">
+                  Your event will remain active and bookable with current details. Changes will be submitted for admin approval and applied only after approval.
                 </p>
               </div>
             </div>

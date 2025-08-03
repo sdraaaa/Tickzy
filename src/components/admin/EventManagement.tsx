@@ -293,13 +293,13 @@ const EventManagement: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
                           <div className="text-white font-medium">{String(event.title)}</div>
-                          {/* DEMO: Show MODIFIED indicator for all events temporarily */}
-                          {(event.lastModifiedBy || true) && (
+                          {/* Show pending changes indicator */}
+                          {event.hasPendingChanges && (
                             <div className="flex items-center space-x-1">
-                              <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              <span className="text-yellow-400 text-xs font-medium">MODIFIED</span>
+                              <span className="text-blue-400 text-xs font-medium">PENDING CHANGES</span>
                             </div>
                           )}
                         </div>
@@ -352,33 +352,19 @@ const EventManagement: React.FC = () => {
                         View
                       </button>
 
-                      {/* Show View Changes button for modified events - DEMO: Show for all events temporarily */}
-                      {(event.lastModifiedBy && event.originalValues) || true && (
+                      {/* Show Review Changes button for events with pending changes */}
+                      {event.hasPendingChanges && event.pendingChanges && (
                         <button
                           onClick={() => {
-                            // For demo purposes, create mock original values if they don't exist
-                            const demoEvent = {
-                              ...event,
-                              originalValues: event.originalValues || {
-                                title: event.title + " (Original)",
-                                description: "Original description before host modifications",
-                                venue: "Original Venue Name",
-                                location: event.location,
-                                capacity: Math.max(50, (event.capacity || 100) - 20),
-                                price: Math.max(10, (event.price || 25) - 5)
-                              },
-                              lastModifiedBy: event.lastModifiedBy || "demo-host-id",
-                              modificationReason: "Host updated event details for demo"
-                            };
-                            setSelectedEvent(demoEvent);
+                            setSelectedEvent(event);
                             setShowChangesModal(true);
                           }}
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors duration-200 flex items-center space-x-1"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors duration-200 flex items-center space-x-1"
                         >
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                           </svg>
-                          <span>Changes</span>
+                          <span>Review</span>
                         </button>
                       )}
 

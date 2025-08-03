@@ -19,13 +19,13 @@ const ChangesSummaryModal: React.FC<ChangesSummaryModalProps> = ({
   onClose,
   event
 }) => {
-  if (!isOpen || !event.originalValues) return null;
+  if (!isOpen || !event.pendingChanges) return null;
 
   // Helper function to detect changes
-  const hasChanged = (field: keyof typeof event.originalValues) => {
-    const original = event.originalValues?.[field];
+  const hasChanged = (field: keyof typeof event.pendingChanges) => {
     const current = event[field];
-    return original !== current;
+    const pending = event.pendingChanges?.[field];
+    return current !== pending && pending !== undefined;
   };
 
   // Helper function to format values for display
@@ -111,20 +111,20 @@ const ChangesSummaryModal: React.FC<ChangesSummaryModalProps> = ({
                           </div>
                           <div className="bg-red-900/20 border border-red-600/30 rounded p-3">
                             <div className="text-red-200">
-                              {formatValue(event.originalValues?.[field], field)}
+                              {formatValue(event[field], field)}
                             </div>
                           </div>
                         </div>
-                        
-                        {/* After */}
+
+                        {/* After (Pending) */}
                         <div className="space-y-2">
                           <div className="flex items-center space-x-2">
                             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span className="text-green-400 font-medium text-sm">After</span>
+                            <span className="text-green-400 font-medium text-sm">Pending Changes</span>
                           </div>
                           <div className="bg-green-900/20 border border-green-600/30 rounded p-3">
                             <div className="text-green-200">
-                              {formatValue(event[field], field)}
+                              {formatValue(event.pendingChanges?.[field], field)}
                             </div>
                           </div>
                         </div>
