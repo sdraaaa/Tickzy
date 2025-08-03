@@ -12,6 +12,7 @@ import { getEventsByHost } from '../../services/firestore';
 import { Event } from '../../types';
 import { isEventPast } from '../../utils/dateUtils';
 import StatsModal from './StatsModal';
+import ManageEventModal from './ManageEventModal';
 
 const HostEvents: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +28,13 @@ const HostEvents: React.FC = () => {
     isOpen: false,
     type: 'active-events',
     title: ''
+  });
+  const [manageModal, setManageModal] = useState<{
+    isOpen: boolean;
+    event: Event | null;
+  }>({
+    isOpen: false,
+    event: null
   });
 
   // Fetch host events from Firestore
@@ -63,6 +71,31 @@ const HostEvents: React.FC = () => {
       type: 'active-events',
       title: ''
     });
+  };
+
+  // Handle manage event modal
+  const handleManageEvent = (event: Event) => {
+    setManageModal({
+      isOpen: true,
+      event
+    });
+  };
+
+  const closeManageModal = () => {
+    setManageModal({
+      isOpen: false,
+      event: null
+    });
+  };
+
+  const handleEventUpdated = (eventId: string, updatedData: Partial<Event>) => {
+    setEvents(prevEvents =>
+      prevEvents.map(event =>
+        event.id === eventId
+          ? { ...event, ...updatedData }
+          : event
+      )
+    );
   };
 
   // Filter events by status and tab
@@ -359,7 +392,10 @@ const HostEvents: React.FC = () => {
                     </div>
                   </div>
 
-                  <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 rounded-lg transition-colors duration-200">
+                  <button
+                    onClick={() => handleManageEvent(event)}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 rounded-lg transition-colors duration-200"
+                  >
                     Manage Event
                   </button>
                 </div>
@@ -412,6 +448,16 @@ const HostEvents: React.FC = () => {
                   statsModal.type === 'pending-events' ? pendingEvents :
                   statsModal.type === 'past-events' ? pastEvents : events}
         />
+
+        {/* Manage Event Modal */}
+        {manageModal.event && (
+          <ManageEventModal
+            isOpen={manageModal.isOpen}
+            onClose={closeManageModal}
+            event={manageModal.event}
+            onEventUpdated={handleEventUpdated}
+          />
+        )}
       </div>
     </section>
   );

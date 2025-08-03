@@ -215,6 +215,46 @@ class NotificationService {
   }
 
   /**
+   * Notify admins when a host updates an event
+   */
+  async notifyAdminEventUpdated(
+    eventId: string,
+    eventTitle: string,
+    hostId: string,
+    hostName: string
+  ): Promise<void> {
+    try {
+      if (!db) return;
+
+      // Get all admin users
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'admin')
+      );
+
+      const usersSnapshot = await getDocs(usersQuery);
+      const notificationPromises: Promise<void>[] = [];
+
+      usersSnapshot.forEach((doc) => {
+        const adminUser = doc.data();
+        const notificationPromise = this.createNotification({
+          userId: adminUser.uid,
+          title: 'Event Updated - Review Required',
+          message: `${hostName} has updated "${eventTitle}". Please review the changes and approve or reject the modifications.`,
+          type: 'admin',
+          actionUrl: `/admin/events/${eventId}`
+        }).then(() => {});
+
+        notificationPromises.push(notificationPromise);
+      });
+
+      await Promise.all(notificationPromises);
+    } catch (error) {
+      // Silent fail
+    }
+  }
+
+  /**
    * Bulk notify users about a new event in their interested categories
    */
   async notifyUsersNewEvent(

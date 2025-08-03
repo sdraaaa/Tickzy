@@ -237,6 +237,28 @@ const EventReviewModal: React.FC<EventReviewModalProps> = ({
                 </div>
               </div>
 
+              {/* Update Notification */}
+              {event.lastModifiedBy && (
+                <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4">
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <div>
+                      <h4 className="text-yellow-400 font-medium">Event Updated by Host</h4>
+                      <p className="text-yellow-200 text-sm mt-1">
+                        This event has been modified and requires re-approval. Please review all changes carefully.
+                      </p>
+                      {event.modificationReason && (
+                        <p className="text-yellow-200 text-xs mt-1">
+                          Reason: {event.modificationReason}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h4 className="text-lg font-semibold text-white mb-3">Host Information</h4>
                 <div className="bg-neutral-700 rounded-lg p-4 space-y-2">

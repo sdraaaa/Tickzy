@@ -41,6 +41,10 @@ export interface Event {
   ticketTiers?: TicketTier[]; // Optional ticket tiers for different pricing
   createdAt: Timestamp;
   updatedAt: Timestamp;
+
+  // Event management fields
+  lastModifiedBy?: string; // UID of user who last modified the event
+  modificationReason?: string; // Reason for modification
 }
 
 // Booking related types
