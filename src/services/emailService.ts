@@ -8,14 +8,38 @@ import emailjs from '@emailjs/browser';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// EmailJS Configuration - Using your actual values
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_tvda6av';
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_gan12wr';
-const EMAILJS_BOOKING_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_BOOKING_TEMPLATE_ID || 'template_booking_confirmation';
-const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'W3q7yQau2TSYWOSI5';
+// EmailJS Configuration - Using hardcoded values for reliability
+const EMAILJS_SERVICE_ID = 'service_tvda6av';
+const EMAILJS_TEMPLATE_ID = 'template_gan12wr';
+const EMAILJS_BOOKING_TEMPLATE_ID = 'template_booking_confirmation';
+const EMAILJS_PUBLIC_KEY = 'W3q7yQau2TSYWOSI5';
 
 // Initialize EmailJS
 emailjs.init(EMAILJS_PUBLIC_KEY);
+
+// Debug function to test EmailJS configuration
+export const testEmailJSConfiguration = () => {
+  console.log('📧 EmailJS Configuration:');
+  console.log('Service ID:', EMAILJS_SERVICE_ID);
+  console.log('Template ID:', EMAILJS_TEMPLATE_ID);
+  console.log('Public Key:', EMAILJS_PUBLIC_KEY);
+  console.log('EmailJS initialized:', !!emailjs);
+};
+
+// Test function to send a test email
+export const sendTestEmail = async (testEmail: string = 'test@example.com') => {
+  console.log('🧪 Sending test email to:', testEmail);
+  const emailService = EmailService.getInstance();
+  const result = await emailService.sendWelcomeEmail({
+    userEmail: testEmail,
+    userName: 'Test User',
+    userFirstName: 'Test'
+  });
+  console.log('🧪 Test email result:', result);
+  return result;
+};
+
+
 
 export interface WelcomeEmailData {
   userEmail: string;
@@ -53,36 +77,24 @@ class EmailService {
    */
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<boolean> {
     try {
+      console.log('📧 Attempting to send welcome email to:', data.userEmail);
 
-
-      // Try multiple email variable names - your template might expect different names
+      // Simplified template parameters - using most common EmailJS variable names
       const templateParams = {
-        // Common recipient email variable names
         to_email: data.userEmail,
-        email: data.userEmail,
-        user_email: data.userEmail,
-        recipient_email: data.userEmail,
-
-        // Common name variable names
         to_name: data.userName || 'User',
-        name: data.userName || 'User',
-        user_name: data.userName || 'User',
-        recipient_name: data.userName || 'User',
-
-        // Common message variables
-        from_name: 'Tickzy',
-        message: 'Welcome to Tickzy! Thank you for joining our platform.',
-        subject: 'Welcome to Tickzy!',
-
-        // Additional common variables
-        reply_to: 'support@tickzy.com',
-        company: 'Tickzy'
+        from_name: 'Tickzy Team',
+        message: `Welcome to Tickzy, ${data.userFirstName || data.userName || 'User'}! Thank you for joining our event platform. We're excited to have you on board!`,
+        subject: 'Welcome to Tickzy - Your Event Journey Starts Here!',
+        reply_to: 'support@tickzy.com'
       };
 
-      // Check if EmailJS is properly configured
-
+      console.log('📧 Template params:', templateParams);
+      console.log('📧 Using Service ID:', EMAILJS_SERVICE_ID);
+      console.log('📧 Using Template ID:', EMAILJS_TEMPLATE_ID);
 
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+        console.error('❌ EmailJS configuration missing');
         return false;
       }
 
@@ -92,8 +104,15 @@ class EmailService {
         templateParams
       );
 
+      console.log('✅ EmailJS response:', response);
       return response.status === 200;
     } catch (error: any) {
+      console.error('❌ EmailJS Error:', {
+        error: error,
+        status: error.status,
+        text: error.text,
+        message: error.message
+      });
       return false;
     }
   }
@@ -310,3 +329,10 @@ class EmailService {
 // Export singleton instance
 export const emailService = EmailService.getInstance();
 export default emailService;
+
+// Expose functions globally for testing in browser console
+if (typeof window !== 'undefined') {
+  (window as any).testEmailJS = testEmailJSConfiguration;
+  (window as any).sendTestEmail = sendTestEmail;
+  (window as any).emailService = emailService;
+}

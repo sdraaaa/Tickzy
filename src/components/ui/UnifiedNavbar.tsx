@@ -153,16 +153,16 @@ const UnifiedNavbar: React.FC<UnifiedNavbarProps> = ({ onNavigate, currentView =
           name: 'Create Event',
           path: '/create-event',
           style: 'primary',
-          description: 'Host a new event'
+          description: 'Create a new event'
         }
       ];
     } else if (userData?.role === 'user') {
       return [
         {
-          name: 'Become a Host',
+          name: 'Become Host',
           path: '/request-host',
           style: 'secondary',
-          description: 'Apply to host events'
+          description: 'Apply to become a host'
         }
       ];
     }
