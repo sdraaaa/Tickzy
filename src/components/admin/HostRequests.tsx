@@ -10,6 +10,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminLogger } from '../../services/adminLogger';
 import HostRequestReviewModal from './HostRequestReviewModal';
+import { openPDFSafely } from '../../services/storage';
 
 interface HostRequest {
   id: string;
@@ -324,17 +325,15 @@ const HostRequests: React.FC = () => {
               {(request as any).licensePDF && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-300 mb-1">Event Manager License:</h4>
-                  <a
-                    href={(request as any).licensePDF}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => openPDFSafely((request as any).licensePDF, 'event-manager-license.pdf')}
                     className="inline-flex items-center space-x-2 text-blue-400 hover:text-blue-300 bg-blue-900/20 px-3 py-2 rounded-lg transition-colors duration-200"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <span>View License PDF</span>
-                  </a>
+                  </button>
                 </div>
               )}
             </div>

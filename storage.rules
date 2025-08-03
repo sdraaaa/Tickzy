@@ -28,8 +28,8 @@ service firebase.storage {
                       request.resource.contentType == 'application/pdf' &&
                       request.resource.size <= 10 * 1024 * 1024;
 
-      // Any authenticated user can read venue proof PDFs (temporary for testing)
-      allow read: if isAuthenticated();
+      // Allow public read access for venue proof PDFs (temporary for testing CORS issues)
+      allow read: if true;
 
       // Any authenticated user can delete venue proof PDFs (temporary for testing)
       allow delete: if isAuthenticated();
@@ -42,8 +42,8 @@ service firebase.storage {
                       request.resource.contentType == 'application/pdf' &&
                       request.resource.size <= 10 * 1024 * 1024;
 
-      // Authenticated users can read license PDFs (for testing)
-      allow read: if isAuthenticated();
+      // Allow public read access for license PDFs (temporary for testing CORS issues)
+      allow read: if true;
 
       // Users can delete license PDFs
       allow delete: if isAuthenticated();

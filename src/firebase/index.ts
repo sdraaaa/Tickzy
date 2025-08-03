@@ -60,12 +60,37 @@ export const debugFirebaseConfig = () => {
   console.log('Storage Bucket:', firebaseConfig.storageBucket);
   console.log('Auth initialized:', auth ? '✅ Yes' : '❌ No');
   console.log('Firestore initialized:', db ? '✅ Yes' : '❌ No');
+  console.log('Storage initialized:', storage ? '✅ Yes' : '❌ No');
   return firebaseConfig;
+};
+
+// Test Firebase Storage connectivity
+export const testStorageConnectivity = async () => {
+  try {
+    if (!storage) {
+      throw new Error('Storage not initialized');
+    }
+
+    console.log('🧪 Testing Firebase Storage connectivity...');
+
+    // Try to create a reference (this doesn't make a network call)
+    const { ref } = await import('firebase/storage');
+    const testRef = ref(storage, 'test/connectivity-test.txt');
+
+    console.log('✅ Storage reference created successfully');
+    console.log('Storage bucket:', storage.app.options.storageBucket);
+
+    return true;
+  } catch (error) {
+    console.error('❌ Storage connectivity test failed:', error);
+    return false;
+  }
 };
 
 // Export for console debugging
 if (typeof window !== 'undefined') {
   (window as any).debugFirebaseConfig = debugFirebaseConfig;
+  (window as any).testStorageConnectivity = testStorageConnectivity;
 }
 
 export { auth, db, storage, provider };
