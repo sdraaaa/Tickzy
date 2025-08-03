@@ -22,7 +22,8 @@ interface EventFormData {
   description: string;
   date: string;
   time: string;
-  locationName: string; // Full address or location name for map display
+  venue: string; // Venue name (e.g., "Park Hyatt Hyderabad")
+  location: string; // Full address for map display
   price: number;
   seatsLeft: number;
   bannerURL: string;
@@ -72,7 +73,8 @@ const CreateEvent: React.FC = () => {
     description: '',
     date: '',
     time: '',
-    locationName: '',
+    venue: '',
+    location: '',
     price: 0,
     seatsLeft: 0,
     bannerURL: '',
@@ -156,7 +158,8 @@ const CreateEvent: React.FC = () => {
       }
     }
     if (!formData.time) newErrors.time = 'Time is required';
-    if (!formData.locationName.trim()) newErrors.locationName = 'Location is required';
+    if (!formData.venue.trim()) newErrors.venue = 'Venue name is required';
+    if (!formData.location.trim()) newErrors.location = 'Event address is required';
     if (formData.price < 0) newErrors.price = 'Price cannot be negative';
     if (formData.seatsLeft <= 0) newErrors.seatsLeft = 'Seats must be greater than 0';
     if (!formData.bannerURL.trim()) newErrors.bannerURL = 'Event banner URL is required';
@@ -188,7 +191,11 @@ const CreateEvent: React.FC = () => {
       // Parse tags for logging
       const eventTags = parseTags(formData.tags);
       console.log('🏷️ Event tags to be saved:', eventTags);
-      console.log('📍 Location name to be saved:', formData.locationName);
+      console.log('🏢 Venue to be saved:', formData.venue);
+      console.log('📍 Location to be saved:', formData.location);
+
+      // Get host name from userData or user
+      const hostName = userData?.displayName || user.displayName || 'Unknown Host';
 
       // Create event document in Firestore
       const eventDoc = await addDoc(collection(db, 'events'), {
@@ -196,8 +203,9 @@ const CreateEvent: React.FC = () => {
         description: formData.description,
         date: formData.date,
         time: formData.time,
-        location: formData.locationName, // Store clean location name
-        locationName: formData.locationName, // Store original location name for map display
+        venue: formData.venue, // Store venue name
+        location: formData.location, // Store full address for map display
+        locationName: formData.location, // Store for backward compatibility
         price: formData.price,
         capacity: formData.seatsLeft, // Using 'capacity' to match existing schema
         seatsLeft: formData.seatsLeft,
@@ -205,6 +213,7 @@ const CreateEvent: React.FC = () => {
         bannerURL: formData.bannerURL,
         venueProofPDF: formData.venueProofPDF,
         hostId: user.uid,
+        hostName: hostName, // Store host name
         status: 'pending',
         ticketsSold: 0,
         revenue: 0,
@@ -291,34 +300,54 @@ const CreateEvent: React.FC = () => {
                 {errors.title && <p className="text-red-400 text-sm mt-1">{errors.title}</p>}
               </div>
 
-              {/* Event Location */}
-              <div className="md:col-span-2">
+              {/* Venue Name */}
+              <div>
                 <label className="block text-sm font-medium text-white mb-2">
-                  Event Location <span className="text-red-400">*</span>
+                  Venue Name <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
-                  name="locationName"
-                  value={formData.locationName}
+                  name="venue"
+                  value={formData.venue}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 bg-neutral-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter full address or location (e.g., Charminar, Hyderabad)"
+                  placeholder="Enter venue name (e.g., Park Hyatt Hyderabad)"
                   required
                 />
-                {errors.locationName && <p className="text-red-400 text-sm mt-1">{errors.locationName}</p>}
+                {errors.venue && <p className="text-red-400 text-sm mt-1">{errors.venue}</p>}
                 <p className="text-gray-400 text-xs mt-1">
-                  Be specific for better map display. Include city name for best results.
+                  The name of the venue where the event will be held.
+                </p>
+              </div>
+
+              {/* Event Address */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Event Address <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-neutral-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Enter full address (e.g., Road No. 2, Banjara Hills, Hyderabad)"
+                  required
+                />
+                {errors.location && <p className="text-red-400 text-sm mt-1">{errors.location}</p>}
+                <p className="text-gray-400 text-xs mt-1">
+                  Full address for map display. Be specific for better results.
                 </p>
 
                 {/* Real-time Map Preview */}
-                {formData.locationName.trim() && (
+                {formData.location.trim() && (
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-white mb-2">
                       📍 Location Preview
                     </label>
                     <div className="bg-neutral-800 rounded-lg p-4 border border-gray-600">
                       <CustomMap
-                        location={formData.locationName}
+                        location={formData.location}
                         height="300px"
                         className="rounded-lg"
                       />

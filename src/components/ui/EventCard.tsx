@@ -139,8 +139,12 @@ const EventCard: React.FC<EventCardProps> = ({ event, onClick }) => {
             {formatDate(event.date)} at {event.time}
           </div>
           <div className="flex items-center text-gray-400 text-sm">
+            <span className="mr-2">🏢</span>
+            {event.venue || 'Venue not specified'}
+          </div>
+          <div className="flex items-center text-gray-400 text-sm">
             <span className="mr-2">📍</span>
-            Location: {event.locationName || decodeLocation(event.location || '')}
+            {event.location || event.locationName || decodeLocation(event.location || '')}
           </div>
         </div>
 

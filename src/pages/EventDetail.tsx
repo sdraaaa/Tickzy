@@ -345,8 +345,13 @@ const EventDetail: React.FC = () => {
               </div>
 
               <div className="flex items-center text-gray-300">
+                <span className="text-purple-400 mr-3 text-lg">🏢</span>
+                <span>Venue: {event.venue || 'Venue not specified'}</span>
+              </div>
+
+              <div className="flex items-center text-gray-300">
                 <span className="text-purple-400 mr-3 text-lg">📍</span>
-                <span>Location: {event.locationName || decodeLocation(event.location || '')}</span>
+                <span>Address: {event.location || event.locationName || decodeLocation(event.location || '')}</span>
               </div>
 
               <div className="flex items-center text-gray-300">
@@ -368,7 +373,7 @@ const EventDetail: React.FC = () => {
             <div className="space-y-3">
               <h3 className="text-xl font-semibold text-white">Event Location</h3>
               <MapPreview
-                locationName={event.locationName || decodeLocation(event.location || '')}
+                locationName={event.location || event.locationName || decodeLocation(event.location || '')}
               />
             </div>
 

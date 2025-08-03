@@ -6,12 +6,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGlobalToast } from '../../contexts/ToastContext';
 import { getEvents, migrateEventsAddSeatsLeft } from '../../services/firestore';
 import { getDefaultEventImage } from '../../utils/defaultImage';
 import { Event, SearchFilters } from '../../types';
-import BookingModal from './BookingModal';
 import { isEventPast } from '../../utils/dateUtils';
 
 interface ExploreEventsProps {
@@ -19,6 +19,7 @@ interface ExploreEventsProps {
 }
 
 const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearchQuery = '' }) => {
+  const navigate = useNavigate();
   const { user, userData } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [events, setEvents] = useState<Event[]>([]);
@@ -28,9 +29,7 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const searchQuery = navbarSearchQuery || localSearchQuery;
 
-  // Booking modal state
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+
 
   // Toast notifications
   const { showSuccess, showError } = useGlobalToast();
@@ -92,75 +91,21 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
     { id: 'education', name: 'Education' }
   ];
 
-  const handleBookEvent = (event: Event) => {
-    if (!user || !userData) {
-      showError('Authentication Required', 'Please log in to book events');
-      return;
-    }
-
-    // Allow both users and hosts to book events, but prevent hosts from booking their own events
-    if (userData.role === 'host' && event.hostId === user.uid) {
-      showError('Cannot Book Own Event', 'You cannot book tickets for your own event');
-      return;
-    }
-
-    // Only allow users and hosts to book events (exclude admins for now)
-    if (userData.role !== 'user' && userData.role !== 'host') {
-      showError('Booking Restricted', 'Only users and hosts can book events');
-      return;
-    }
-
-    // Check if event has completely passed (date + time)
-    if (isEventPast(event.date, event.time)) {
-      showError('Event Passed', 'This event has already passed and is no longer available for booking');
-      return;
-    }
-
-    if (event.status !== 'published' && event.status !== 'approved') {
-      showError('Event Unavailable', 'This event is not available for booking');
-      return;
-    }
-
-    // Calculate available seats (handle missing seatsLeft)
-    const seatsLeft = event.seatsLeft !== undefined && event.seatsLeft !== null
-      ? event.seatsLeft
-      : Math.max(0, (event.capacity || event.totalTickets || 100) - (event.ticketsSold || 0));
-
-    if (seatsLeft <= 0) {
-      showError('Sold Out', 'This event is sold out');
-      return;
-    }
-
-    setSelectedEvent(event);
-    setIsBookingModalOpen(true);
+  const handleCardClick = (eventId: string) => {
+    navigate(`/event/${eventId}`);
   };
 
-  const handleBookingSuccess = (bookingId: string) => {
-    showSuccess(
-      'Booking Confirmed!',
-      'Your ticket has been booked successfully. Check your email for confirmation.'
-    );
+  const handleBookEvent = (eventId: string, e?: React.MouseEvent) => {
+    // Prevent card click when booking button is clicked
+    if (e) {
+      e.stopPropagation();
+    }
 
-    // Refresh events to update seat counts
-    const fetchEvents = async () => {
-      try {
-        const filters: Partial<SearchFilters> = {
-          category: selectedCategory === 'all' ? undefined : selectedCategory,
-          query: searchQuery || undefined
-        };
-        const fetchedEvents = await getEvents(filters);
-        setEvents(fetchedEvents);
-      } catch (error) {
-        console.error('Error refreshing events:', error);
-      }
-    };
-    fetchEvents();
+    // Navigate to event detail page for booking
+    navigate(`/event/${eventId}`);
   };
 
-  const handleCloseBookingModal = () => {
-    setIsBookingModalOpen(false);
-    setSelectedEvent(null);
-  };
+
 
   return (
     <section id="explore-events" className="py-16 bg-black scroll-mt-20">
@@ -242,7 +187,11 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredEvents.map((event) => (
-            <div key={event.id} className="bg-neutral-800 rounded-xl overflow-hidden border border-gray-700 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-105">
+            <div
+              key={event.id}
+              className="bg-neutral-800 rounded-xl overflow-hidden border border-gray-700 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-105 cursor-pointer group"
+              onClick={() => handleCardClick(event.id)}
+            >
               <div className="relative h-48">
                 <img
                   src={event.image}
@@ -275,7 +224,7 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
               </div>
 
               <div className="p-6">
-                <h3 className="text-xl font-semibold text-white mb-2">{event.title}</h3>
+                <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-400 transition-colors">{event.title}</h3>
                 <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
 
                 {/* Tags */}
@@ -347,7 +296,7 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
 
                     return (
                       <button
-                        onClick={() => handleBookEvent(event)}
+                        onClick={(e) => handleBookEvent(event.id, e)}
                         disabled={!isAvailable}
                         className={`w-full font-medium py-3 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg ${
                           !isAvailable
@@ -370,7 +319,8 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
                   })()
                 ) : (
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (!user) {
                         showError('Login Required', 'Please log in to book events');
                       } else {
@@ -407,13 +357,7 @@ const ExploreEvents: React.FC<ExploreEventsProps> = ({ searchQuery: navbarSearch
           </div>
         )}
 
-        {/* Booking Modal */}
-        <BookingModal
-          event={selectedEvent}
-          isOpen={isBookingModalOpen}
-          onClose={handleCloseBookingModal}
-          onBookingSuccess={handleBookingSuccess}
-        />
+
       </div>
     </section>
   );

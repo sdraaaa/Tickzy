@@ -62,17 +62,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Create or get user document from Firestore
   const createOrGetUserDocument = async (firebaseUser: User): Promise<UserData | null> => {
-    if (!firebaseUser.email || !db) return null;
+    console.log('🔍 createOrGetUserDocument called for user:', firebaseUser.email);
+    console.log('🔍 Database available:', !!db);
+    console.log('🔍 User email:', firebaseUser.email);
+    console.log('🔍 User UID:', firebaseUser.uid);
+
+    if (!firebaseUser.email || !db) {
+      console.log('❌ Missing email or database:', { email: firebaseUser.email, db: !!db });
+      return null;
+    }
 
     try {
       const userDocRef = doc(db, 'users', firebaseUser.uid);
+      console.log('🔍 Attempting to get user document...');
 
       // Check if user document exists
       const userDoc = await getDoc(userDocRef);
+      console.log('🔍 User document exists:', userDoc.exists());
 
       if (userDoc.exists()) {
         // User exists, check if welcome email should be sent
         const existingData = userDoc.data() as UserData;
+        console.log('✅ User document found:', existingData.email);
+        console.log('✅ User role:', existingData.role);
 
         // Send welcome email if user is verified and hasn't received it yet
         if (shouldSendWelcomeEmail(firebaseUser, existingData)) {
@@ -82,6 +94,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return existingData;
       } else {
         // User doesn't exist, create new document
+        console.log('📝 Creating new user document...');
         const isGoogleUser = firebaseUser.providerData?.[0]?.providerId === 'google.com';
 
         const newUserData: UserData = {
@@ -96,7 +109,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           welcomeEmailSent: false,
         };
 
+        console.log('📝 New user data:', newUserData);
         await setDoc(userDocRef, newUserData);
+        console.log('✅ User document created successfully');
 
         // Send welcome email for verified users (Google users or verified email users)
         if (isGoogleUser || firebaseUser.emailVerified) {
@@ -107,7 +122,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error creating/getting user document:', error);
-      setFirebaseError('Failed to access user data. Please try again later.');
+      console.error('Error details:', error);
+
+      // More specific error handling
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          setFirebaseError('Permission denied. Please refresh the page and try again.');
+        } else if (error.message.includes('network')) {
+          setFirebaseError('Network error. Please check your connection and try again.');
+        } else {
+          setFirebaseError('Failed to access user data. Please refresh the page and try again.');
+        }
+      } else {
+        setFirebaseError('Failed to access user data. Please refresh the page and try again.');
+      }
       return null;
     }
   };
@@ -276,13 +304,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     <AuthContext.Provider value={value}>
       {firebaseError && (
         <div className="fixed top-4 right-4 bg-red-600 text-white p-4 rounded-lg shadow-lg z-50 max-w-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">{firebaseError}</span>
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{firebaseError}</span>
+              <button
+                onClick={() => setFirebaseError(null)}
+                className="ml-2 text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
             <button
-              onClick={() => setFirebaseError(null)}
-              className="ml-2 text-white hover:text-gray-200"
+              onClick={() => {
+                setFirebaseError(null);
+                window.location.reload();
+              }}
+              className="text-xs bg-red-700 hover:bg-red-800 px-2 py-1 rounded transition-colors"
             >
-              ×
+              Refresh Page
             </button>
           </div>
         </div>

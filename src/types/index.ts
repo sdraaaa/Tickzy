@@ -22,8 +22,9 @@ export interface Event {
   description: string;
   date: string; // ISO date string
   time: string;
-  location: string;
-  locationName: string; // Human-readable location name for map display
+  venue: string; // Venue name (e.g., "Park Hyatt Hyderabad")
+  location: string; // Full address for map display
+  locationName: string; // Human-readable location name for map display (backward compatibility)
   price: number;
   tags: string[]; // Multiple tags for filtering
   category: string; // Primary category
