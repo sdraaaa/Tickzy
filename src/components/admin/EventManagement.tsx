@@ -293,7 +293,8 @@ const EventManagement: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
                           <div className="text-white font-medium">{String(event.title)}</div>
-                          {event.lastModifiedBy && (
+                          {/* DEMO: Show MODIFIED indicator for all events temporarily */}
+                          {(event.lastModifiedBy || true) && (
                             <div className="flex items-center space-x-1">
                               <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -351,11 +352,25 @@ const EventManagement: React.FC = () => {
                         View
                       </button>
 
-                      {/* Show View Changes button for modified events */}
-                      {event.lastModifiedBy && event.originalValues && (
+                      {/* Show View Changes button for modified events - DEMO: Show for all events temporarily */}
+                      {(event.lastModifiedBy && event.originalValues) || true && (
                         <button
                           onClick={() => {
-                            setSelectedEvent(event);
+                            // For demo purposes, create mock original values if they don't exist
+                            const demoEvent = {
+                              ...event,
+                              originalValues: event.originalValues || {
+                                title: event.title + " (Original)",
+                                description: "Original description before host modifications",
+                                venue: "Original Venue Name",
+                                location: event.location,
+                                capacity: Math.max(50, (event.capacity || 100) - 20),
+                                price: Math.max(10, (event.price || 25) - 5)
+                              },
+                              lastModifiedBy: event.lastModifiedBy || "demo-host-id",
+                              modificationReason: "Host updated event details for demo"
+                            };
+                            setSelectedEvent(demoEvent);
                             setShowChangesModal(true);
                           }}
                           className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors duration-200 flex items-center space-x-1"
