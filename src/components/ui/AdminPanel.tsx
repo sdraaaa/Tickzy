@@ -8,10 +8,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import AdminStatsModal from './AdminStatsModal';
 
 const AdminPanel: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [statsModal, setStatsModal] = useState<{
+    isOpen: boolean;
+    type: 'total-events' | 'total-users' | 'total-revenue' | 'pending-events';
+    title: string;
+  }>({
+    isOpen: false,
+    type: 'total-events',
+    title: ''
+  });
 
   // Sample admin data
   const platformStats = {
@@ -26,6 +36,59 @@ const AdminPanel: React.FC = () => {
     { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'host', joinDate: '2024-12-02' },
     { id: '3', name: 'Bob Wilson', email: 'bob@example.com', role: 'user', joinDate: '2024-12-03' }
   ];
+
+  // Handle stat card clicks
+  const handleStatClick = (type: 'total-events' | 'total-users' | 'total-revenue' | 'pending-events', title: string) => {
+    setStatsModal({
+      isOpen: true,
+      type,
+      title
+    });
+  };
+
+  const closeStatsModal = () => {
+    setStatsModal({
+      isOpen: false,
+      type: 'total-events',
+      title: ''
+    });
+  };
+
+  // Sample detailed data for modals
+  const detailedStats = {
+    'total-events': {
+      published: 67,
+      pending: 12,
+      rejected: 8,
+      draft: 2,
+      createdToday: 3,
+      createdThisWeek: 15
+    },
+    'total-users': {
+      users: 1089,
+      hosts: 142,
+      admins: 16,
+      newToday: 8,
+      newThisWeek: 47,
+      activeUsers: 892
+    },
+    'total-revenue': {
+      totalRevenue: 45670,
+      monthlyRevenue: 12450,
+      avgPerEvent: 513,
+      monthlyGrowth: 18,
+      topCategory: 'Technology',
+      platformFees: 4567
+    },
+    'pending-events': {
+      total: 12,
+      urgent: 5,
+      avgWaitTime: 18,
+      over24h: 7,
+      over72h: 3,
+      highValue: 4
+    }
+  };
 
   const pendingEvents = [
     { id: '1', title: 'New Year Party', host: 'Party Planners Inc', date: '2024-12-31', status: 'pending' },
@@ -47,7 +110,10 @@ const AdminPanel: React.FC = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+          <div
+            className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+            onClick={() => handleStatClick('total-users', 'User Management Analytics')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Total Users</p>
@@ -62,7 +128,10 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+          <div
+            className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+            onClick={() => handleStatClick('total-events', 'Event Management Analytics')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Total Events</p>
@@ -77,7 +146,10 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+          <div
+            className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+            onClick={() => handleStatClick('total-revenue', 'Revenue Analytics')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Total Revenue</p>
@@ -92,7 +164,10 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+          <div
+            className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+            onClick={() => handleStatClick('pending-events', 'Pending Events Management')}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Pending Events</p>
@@ -235,6 +310,15 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Admin Stats Modal */}
+        <AdminStatsModal
+          isOpen={statsModal.isOpen}
+          onClose={closeStatsModal}
+          title={statsModal.title}
+          type={statsModal.type}
+          data={detailedStats[statsModal.type]}
+        />
       </div>
     </div>
   );

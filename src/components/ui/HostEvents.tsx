@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getEventsByHost } from '../../services/firestore';
 import { Event } from '../../types';
 import { isEventPast } from '../../utils/dateUtils';
+import StatsModal from './StatsModal';
 
 const HostEvents: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +19,15 @@ const HostEvents: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'past'>('active');
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statsModal, setStatsModal] = useState<{
+    isOpen: boolean;
+    type: 'active-events' | 'pending-events' | 'past-events' | 'tickets-sold' | 'revenue';
+    title: string;
+  }>({
+    isOpen: false,
+    type: 'active-events',
+    title: ''
+  });
 
   // Fetch host events from Firestore
   useEffect(() => {
@@ -37,6 +47,23 @@ const HostEvents: React.FC = () => {
 
     fetchEvents();
   }, [user]);
+
+  // Handle stat card clicks
+  const handleStatClick = (type: 'active-events' | 'pending-events' | 'past-events' | 'tickets-sold' | 'revenue', title: string) => {
+    setStatsModal({
+      isOpen: true,
+      type,
+      title
+    });
+  };
+
+  const closeStatsModal = () => {
+    setStatsModal({
+      isOpen: false,
+      type: 'active-events',
+      title: ''
+    });
+  };
 
   // Filter events by status and tab
   // Define statuses more comprehensively
@@ -156,7 +183,10 @@ const HostEvents: React.FC = () => {
         {/* Quick Stats */}
         {!loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+            <div
+              className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+              onClick={() => handleStatClick('active-events', 'Active Events Details')}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white">{activeEvents.length}</div>
@@ -170,7 +200,10 @@ const HostEvents: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+            <div
+              className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+              onClick={() => handleStatClick('pending-events', 'Pending Events Details')}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white">{pendingEvents.length}</div>
@@ -184,11 +217,14 @@ const HostEvents: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+            <div
+              className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+              onClick={() => handleStatClick('tickets-sold', 'Ticket Sales Analytics')}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white">
-                    {activeEvents.reduce((sum, event) => sum + (event.ticketsSold || 0), 0)}
+                    {events.reduce((sum, event) => sum + (event.ticketsSold || 0), 0)}
                   </div>
                   <div className="text-gray-400 text-sm">Total Tickets Sold</div>
                 </div>
@@ -200,11 +236,14 @@ const HostEvents: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-neutral-800 rounded-xl p-6 border border-gray-700">
+            <div
+              className="bg-neutral-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 cursor-pointer transform hover:scale-105"
+              onClick={() => handleStatClick('revenue', 'Revenue Analytics')}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-white">
-                    ${activeEvents.reduce((sum, event) => sum + (event.revenue || 0), 0).toLocaleString()}
+                    ${events.reduce((sum, event) => sum + (event.revenue || 0), 0).toLocaleString()}
                   </div>
                   <div className="text-gray-400 text-sm">Total Revenue</div>
                 </div>
@@ -362,6 +401,17 @@ const HostEvents: React.FC = () => {
             </p>
           </div>
         )}
+
+        {/* Stats Modal */}
+        <StatsModal
+          isOpen={statsModal.isOpen}
+          onClose={closeStatsModal}
+          title={statsModal.title}
+          type={statsModal.type}
+          events={statsModal.type === 'active-events' ? activeEvents :
+                  statsModal.type === 'pending-events' ? pendingEvents :
+                  statsModal.type === 'past-events' ? pastEvents : events}
+        />
       </div>
     </section>
   );
